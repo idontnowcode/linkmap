@@ -1,0 +1,15 @@
+appId: com.linkmap.app
+productName: LinkMap
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+win:
+  target: nsis
+mac:
+  target: dmg
+  category: public.app-category.productivity
+linux:
+  target: AppImage

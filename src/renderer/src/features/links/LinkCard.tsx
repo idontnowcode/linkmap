@@ -1,0 +1,83 @@
+import { File, Folder, Star } from 'lucide-react'
+import type { LinkWithTags } from '@shared/types'
+import { useAppStore } from '@/store/appStore'
+import { useUiStore } from '@/store/uiStore'
+import { cn, initials } from '@/lib/utils'
+
+export function LinkCard({ link }: { link: LinkWithTags }): JSX.Element {
+  const selectedNodeId = useUiStore((s) => s.selectedNodeId)
+  const selectNode = useUiStore((s) => s.selectNode)
+  const focusNode = useUiStore((s) => s.focusNode)
+  const toggleFavorite = useAppStore((s) => s.toggleFavorite)
+
+  const selected = selectedNodeId === link.id
+
+  return (
+    <div
+      onClick={() => {
+        selectNode(link.id, 'link')
+        focusNode(link.id)
+      }}
+      className={cn(
+        'group flex cursor-pointer items-center gap-2.5 border-b border-line px-3 py-2.5',
+        selected ? 'bg-brand/5' : 'hover:bg-[#EEF2F7]'
+      )}
+    >
+      <Favicon link={link} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-body font-medium text-ink-strong">{link.title}</p>
+        <p className="truncate text-sm text-ink-muted">{link.domain ?? link.url}</p>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          void toggleFavorite(link.id)
+        }}
+        className="shrink-0 p-0.5"
+        title="즐겨찾기"
+      >
+        <Star
+          size={15}
+          className={link.favorite ? 'fill-brand text-brand' : 'text-ink-muted/50 group-hover:text-ink-muted'}
+        />
+      </button>
+    </div>
+  )
+}
+
+export function Favicon({ link, size = 18 }: { link: LinkWithTags; size?: number }): JSX.Element {
+  if (link.kind === 'file' || link.kind === 'folder') {
+    const Icon = link.kind === 'folder' ? Folder : File
+    const tint = link.kind === 'folder' ? '#F97316' : '#14B8A6'
+    return (
+      <span
+        className="grid shrink-0 place-items-center rounded-sm"
+        style={{ width: size, height: size, background: `${tint}1F` }}
+      >
+        <Icon size={size * 0.62} style={{ color: tint }} />
+      </span>
+    )
+  }
+  if (link.favicon) {
+    return (
+      <img
+        src={link.favicon}
+        alt=""
+        width={size}
+        height={size}
+        className="shrink-0 rounded-sm"
+        onError={(e) => {
+          ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+        }}
+      />
+    )
+  }
+  return (
+    <span
+      className="grid shrink-0 place-items-center rounded-sm bg-brand/10 text-[9px] font-semibold text-brand"
+      style={{ width: size, height: size }}
+    >
+      {initials(link.title)}
+    </span>
+  )
+}
