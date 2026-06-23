@@ -17,6 +17,7 @@ import {
   tagRepo
 } from '../repositories'
 import { fetchMeta } from '../services/metaFetch'
+import { readTextFileContent } from '../services/fileContent'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.graphSnapshot, () => graphRepo.snapshot())
@@ -66,9 +67,11 @@ export function registerIpcHandlers(): void {
     const title = basename(path) || path
     try {
       const s = await stat(path)
-      return { kind: s.isDirectory() ? 'folder' : 'file', title, exists: true }
+      const kind = s.isDirectory() ? 'folder' : 'file'
+      const content = kind === 'file' ? await readTextFileContent(path) : null
+      return { kind, title, exists: true, content }
     } catch {
-      return { kind: 'file', title, exists: false }
+      return { kind: 'file', title, exists: false, content: null }
     }
   })
 

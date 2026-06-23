@@ -127,4 +127,6 @@ export interface PathInfo {
   kind: 'file' | 'folder'
   title: string
   exists: boolean
+  /** 텍스트/코드 파일이면 본문(전문검색용), 아니면 null */
+  content: string | null
 }

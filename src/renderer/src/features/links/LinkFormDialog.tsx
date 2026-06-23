@@ -70,6 +70,7 @@ export function LinkFormDialog(): JSX.Element {
     const info = await window.api.pathInfo(path)
     setKind(info.kind)
     setUrl(path)
+    setContent(info.content)
     if (!title) setTitle(info.title)
   }
 

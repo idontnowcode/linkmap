@@ -53,7 +53,7 @@ export default function App(): JSX.Element {
             const path = window.api.getPathForFile(f)
             if (!path) return null
             const info = await window.api.pathInfo(path)
-            return { path, kind: info.kind, title: info.title }
+            return { path, kind: info.kind, title: info.title, content: info.content }
           })
         )
         const items = resolved.filter((x): x is NonNullable<typeof x> => x !== null)
@@ -62,13 +62,20 @@ export default function App(): JSX.Element {
         if (items.length === 1) {
           // 하나면 폼을 열어 태그/설명을 바로 붙일 수 있게
           const it = items[0]
-          useUiStore.getState().openLinkForm({ url: it.path, title: it.title, kind: it.kind })
+          useUiStore
+            .getState()
+            .openLinkForm({ url: it.path, title: it.title, kind: it.kind, content: it.content })
         } else {
           // 여러 개면 일괄 생성 후 첫 노드 포커스
           const { createLink } = useAppStore.getState()
           let firstId: string | null = null
           for (const it of items) {
-            const id = await createLink({ kind: it.kind, url: it.path, title: it.title })
+            const id = await createLink({
+              kind: it.kind,
+              url: it.path,
+              title: it.title,
+              content: it.content
+            })
             if (!firstId) firstId = id
           }
           if (firstId) {
