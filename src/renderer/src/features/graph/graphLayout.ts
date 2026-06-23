@@ -26,6 +26,13 @@ export interface LinkNodeData extends Record<string, unknown> {
 export interface RelationEdgeData extends Record<string, unknown> {
   relationType: RelationType
   label?: string | null
+  /** 컬렉션 멤버십 엣지(점선 '포함')인지 */
+  membership?: boolean
+}
+
+export interface BuildOptions {
+  showTags: boolean
+  showCollections: boolean
 }
 
 export type FlowNode = Node<LinkNodeData>
@@ -35,37 +42,55 @@ interface SimNode extends SimulationNodeDatum {
   id: string
 }
 
-/** snapshot → React Flow nodes/edges. tag/collection 노드는 relation에 참여한 것만 포함. */
-export function buildGraph(snapshot: GraphSnapshot, layout: LayoutMode): {
-  nodes: FlowNode[]
-  edges: FlowEdge[]
-} {
+/**
+ * snapshot → React Flow nodes/edges.
+ * - 태그 노드: relation에 참여 + showTags일 때만
+ * - 컬렉션 노드: 멤버십(collectionLinks) 또는 relation 참여 + showCollections일 때, 멤버에 점선 '포함' 엣지
+ */
+export function buildGraph(
+  snapshot: GraphSnapshot,
+  layout: LayoutMode,
+  opts: BuildOptions
+): { nodes: FlowNode[]; edges: FlowEdge[] } {
+  const { showTags, showCollections } = opts
   const activeLinks = snapshot.links.filter((l) => l.deletedAt == null)
   const tagById = new Map(snapshot.tags.map((t) => [t.id, t]))
   const colById = new Map(snapshot.collections.map((c) => [c.id, c]))
   const linkById = new Map(activeLinks.map((l) => [l.id, l]))
 
-  // relation에 등장하는 비-링크 노드 수집
-  const extraNodeIds = new Set<string>()
-  const extraKind = new Map<string, NodeKind>()
+  // relation에 등장하는 비-링크 노드 (설정에 따라 게이팅)
+  const tagNodeIds = new Set<string>()
+  const colNodeIds = new Set<string>()
   for (const r of snapshot.relations) {
-    if (r.sourceKind !== 'link') {
-      extraNodeIds.add(r.sourceId)
-      extraKind.set(r.sourceId, r.sourceKind)
-    }
-    if (r.targetKind !== 'link') {
-      extraNodeIds.add(r.targetId)
-      extraKind.set(r.targetId, r.targetKind)
+    if (r.sourceKind === 'tag' && showTags) tagNodeIds.add(r.sourceId)
+    if (r.targetKind === 'tag' && showTags) tagNodeIds.add(r.targetId)
+    if (r.sourceKind === 'collection' && showCollections) colNodeIds.add(r.sourceId)
+    if (r.targetKind === 'collection' && showCollections) colNodeIds.add(r.targetId)
+  }
+
+  // 컬렉션 멤버십 → 컬렉션 노드 + '포함' 점선 엣지
+  const membershipEdges: FlowEdge[] = []
+  if (showCollections) {
+    for (const cl of snapshot.collectionLinks) {
+      if (!linkById.has(cl.linkId) || !colById.has(cl.collectionId)) continue
+      colNodeIds.add(cl.collectionId)
+      membershipEdges.push({
+        id: `mem-${cl.collectionId}-${cl.linkId}`,
+        source: cl.collectionId,
+        target: cl.linkId,
+        type: 'relation',
+        data: { relationType: 'custom', label: '포함', membership: true }
+      })
     }
   }
 
-  // degree 집계
+  const validIds = new Set<string>([...linkById.keys(), ...tagNodeIds, ...colNodeIds])
+
   const degree = new Map<string, number>()
   const bump = (id: string): void => {
     degree.set(id, (degree.get(id) ?? 0) + 1)
   }
 
-  const validIds = new Set<string>([...linkById.keys(), ...extraNodeIds])
   const edges: FlowEdge[] = []
   for (const r of snapshot.relations) {
     if (!validIds.has(r.sourceId) || !validIds.has(r.targetId)) continue
@@ -78,6 +103,12 @@ export function buildGraph(snapshot: GraphSnapshot, layout: LayoutMode): {
       type: 'relation',
       data: { relationType: r.type, label: r.label }
     })
+  }
+  for (const e of membershipEdges) {
+    if (!validIds.has(e.source) || !validIds.has(e.target)) continue
+    bump(e.source)
+    bump(e.target)
+    edges.push(e)
   }
 
   const nodes: FlowNode[] = []
@@ -96,27 +127,25 @@ export function buildGraph(snapshot: GraphSnapshot, layout: LayoutMode): {
       }
     })
   }
-  for (const id of extraNodeIds) {
-    const kind = extraKind.get(id)!
-    if (kind === 'tag') {
-      const t = tagById.get(id)
-      if (!t) continue
-      nodes.push({
-        id,
-        type: 'tag',
-        position: { x: 0, y: 0 },
-        data: { kind: 'tag', label: t.name, color: t.color, degree: degree.get(id) ?? 0 }
-      })
-    } else if (kind === 'collection') {
-      const c = colById.get(id)
-      if (!c) continue
-      nodes.push({
-        id,
-        type: 'collection',
-        position: { x: 0, y: 0 },
-        data: { kind: 'collection', label: c.name, degree: degree.get(id) ?? 0 }
-      })
-    }
+  for (const id of tagNodeIds) {
+    const t = tagById.get(id)
+    if (!t) continue
+    nodes.push({
+      id,
+      type: 'tag',
+      position: { x: 0, y: 0 },
+      data: { kind: 'tag', label: t.name, color: t.color, degree: degree.get(id) ?? 0 }
+    })
+  }
+  for (const id of colNodeIds) {
+    const c = colById.get(id)
+    if (!c) continue
+    nodes.push({
+      id,
+      type: 'collection',
+      position: { x: 0, y: 0 },
+      data: { kind: 'collection', label: c.name, degree: degree.get(id) ?? 0 }
+    })
   }
 
   layoutPositions(nodes, edges, layout)

@@ -7,6 +7,7 @@ import { TagFormDialog } from './features/tags/TagFormDialog'
 import { RelationDialog } from './features/relations/RelationDialog'
 import { CollectionFormDialog } from './features/collections/CollectionFormDialog'
 import { CollectionPickerDialog } from './features/collections/CollectionPickerDialog'
+import { SettingsDialog } from './features/settings/SettingsDialog'
 
 export default function App(): JSX.Element {
   const load = useAppStore((s) => s.load)
@@ -91,7 +92,8 @@ export default function App(): JSX.Element {
         title: meta.title ?? '',
         description: meta.description ?? '',
         favicon: meta.favicon,
-        thumbnail: meta.thumbnail
+        thumbnail: meta.thumbnail,
+        content: meta.content
       })
     }
     const onDropWrapped = (e: DragEvent): void => void onDrop(e)
@@ -121,6 +123,7 @@ export default function App(): JSX.Element {
       <RelationDialog />
       <CollectionFormDialog />
       <CollectionPickerDialog />
+      <SettingsDialog />
       {dragging && (
         <div className="pointer-events-none fixed inset-0 z-40 grid place-items-center bg-brand/10 backdrop-blur-sm">
           <div className="rounded-lg border-2 border-dashed border-brand bg-white px-8 py-6 text-h text-brand shadow-pop">

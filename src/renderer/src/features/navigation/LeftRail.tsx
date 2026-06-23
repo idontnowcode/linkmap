@@ -27,6 +27,7 @@ export function LeftRail(): JSX.Element {
   const openLinkForm = useUiStore((s) => s.openLinkForm)
   const openTagForm = useUiStore((s) => s.openTagForm)
   const openCollectionForm = useUiStore((s) => s.openCollectionForm)
+  const openSettings = useUiStore((s) => s.openSettings)
 
   const smartViews = [
     { id: 'all', label: '모든 링크', icon: Link2, count: counts.all },
@@ -138,7 +139,10 @@ export function LeftRail(): JSX.Element {
       </div>
 
       {/* Footer */}
-      <button className="flex items-center gap-2.5 border-t border-white/5 px-4 py-3 text-body text-ink-dark-muted hover:text-white">
+      <button
+        onClick={openSettings}
+        className="flex items-center gap-2.5 border-t border-white/5 px-4 py-3 text-body text-ink-dark-muted hover:text-white"
+      >
         <Settings size={16} /> 설정
       </button>
     </aside>

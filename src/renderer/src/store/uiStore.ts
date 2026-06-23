@@ -30,6 +30,7 @@ interface UiState {
   relationSourceKind: NodeKind | null
   collectionFormOpen: boolean
   collectionPickerLinkId: string | null
+  settingsOpen: boolean
 
   selectNode: (id: string | null, kind?: NodeKind | null) => void
   setTab: (tab: DetailTab) => void
@@ -48,6 +49,8 @@ interface UiState {
   closeCollectionForm: () => void
   openCollectionPicker: (linkId: string) => void
   closeCollectionPicker: () => void
+  openSettings: () => void
+  closeSettings: () => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -69,6 +72,7 @@ export const useUiStore = create<UiState>((set) => ({
   relationSourceKind: null,
   collectionFormOpen: false,
   collectionPickerLinkId: null,
+  settingsOpen: false,
 
   selectNode: (id, kind = 'link') => set({ selectedNodeId: id, selectedKind: id ? kind : null }),
   setTab: (tab) => set({ activeTab: tab }),
@@ -88,5 +92,7 @@ export const useUiStore = create<UiState>((set) => ({
   openCollectionForm: () => set({ collectionFormOpen: true }),
   closeCollectionForm: () => set({ collectionFormOpen: false }),
   openCollectionPicker: (linkId) => set({ collectionPickerLinkId: linkId }),
-  closeCollectionPicker: () => set({ collectionPickerLinkId: null })
+  closeCollectionPicker: () => set({ collectionPickerLinkId: null }),
+  openSettings: () => set({ settingsOpen: true }),
+  closeSettings: () => set({ settingsOpen: false })
 }))

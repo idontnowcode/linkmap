@@ -15,7 +15,8 @@ export function PreviewTab({ link }: { link: LinkWithTags }): JSX.Element {
       await updateLink(link.id, {
         favicon: meta.favicon,
         thumbnail: meta.thumbnail,
-        description: meta.description ?? link.description
+        description: meta.description ?? link.description,
+        content: meta.content ?? link.content
       })
     } finally {
       setLoading(false)

@@ -90,12 +90,12 @@ export async function seedIfEmpty(): Promise<void> {
       .run()
   }
 
-  await rel(linkIds.openai, linkIds.chatgpt, 'reference', 'developed by')
+  await rel(linkIds.openai, linkIds.chatgpt, 'related', 'developed by')
   await rel(linkIds.openai, linkIds.openaiapi, 'related', 'provides')
   await rel(linkIds.openaiapi, linkIds.gpt4, 'uses', 'uses')
   await rel(linkIds.openaiapi, linkIds.dalle, 'related', 'provides')
   await rel(linkIds.langchain, linkIds.openaiapi, 'uses', 'integrates')
-  await rel(linkIds.langchain, linkIds.dalle, 'supports', 'supports')
+  await rel(linkIds.langchain, linkIds.dalle, 'uses', 'supports')
   await rel(tagIds.AI, linkIds.openaiapi, 'related', 'related', 'tag')
   await rel(tagIds.AI, linkIds.openai, 'part_of', 'part of', 'tag')
 

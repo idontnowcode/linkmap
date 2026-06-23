@@ -45,6 +45,7 @@ function toLink(row: LinkRow): Link {
     favicon: row.favicon,
     thumbnail: row.thumbnail,
     note: row.note,
+    content: row.content,
     domain: row.domain,
     favorite: row.favorite,
     deletedAt: row.deletedAt ? row.deletedAt.getTime() : null,
@@ -69,6 +70,7 @@ export const linkRepo = {
       favicon: input.favicon ?? null,
       thumbnail: input.thumbnail ?? null,
       note: input.note ?? null,
+      content: input.content ?? null,
       domain: deriveLocation(kind, input.url),
       favorite: input.favorite ?? false,
       deletedAt: null,
@@ -99,6 +101,7 @@ export const linkRepo = {
     if (fields.favicon !== undefined) data.favicon = fields.favicon
     if (fields.thumbnail !== undefined) data.thumbnail = fields.thumbnail
     if (fields.note !== undefined) data.note = fields.note
+    if (fields.content !== undefined) data.content = fields.content
     if (fields.favorite !== undefined) data.favorite = fields.favorite
     await db.update(links).set(data).where(eq(links.id, id)).run()
 

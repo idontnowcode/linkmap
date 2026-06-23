@@ -27,7 +27,9 @@ export function RelationEdge({
     targetPosition
   })
 
+  const membership = data?.membership
   const style = edgeStyle(data?.relationType ?? 'custom')
+  const color = membership ? '#94A3B8' : style.color
   const label = data?.label
 
   return (
@@ -35,11 +37,12 @@ export function RelationEdge({
       <BaseEdge
         id={id}
         path={path}
-        markerEnd={markerEnd}
+        markerEnd={membership ? undefined : markerEnd}
         style={{
-          stroke: style.color,
-          strokeWidth: 1.6,
-          strokeDasharray: style.dashed ? '5 4' : undefined
+          stroke: color,
+          strokeWidth: membership ? 1.3 : 1.6,
+          strokeDasharray: membership || style.dashed ? '5 4' : undefined,
+          opacity: membership ? 0.7 : 1
         }}
       />
       {label && (
@@ -49,7 +52,7 @@ export function RelationEdge({
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               background: '#fff',
-              color: style.color,
+              color,
               padding: '1px 6px',
               borderRadius: 6,
               fontSize: 11,

@@ -28,6 +28,7 @@ export function LinkFormDialog(): JSX.Element {
   const [description, setDescription] = useState('')
   const [favicon, setFavicon] = useState<string | null>(null)
   const [thumbnail, setThumbnail] = useState<string | null>(null)
+  const [content, setContent] = useState<string | null>(null)
   const [tagIds, setTagIds] = useState<string[]>([])
   const [addingTag, setAddingTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
@@ -48,6 +49,7 @@ export function LinkFormDialog(): JSX.Element {
       setDescription(editLink.description ?? '')
       setFavicon(editLink.favicon)
       setThumbnail(editLink.thumbnail)
+      setContent(editLink.content)
       setTagIds(editLink.tagIds)
     } else {
       setKind(prefill?.kind ?? 'web')
@@ -56,6 +58,7 @@ export function LinkFormDialog(): JSX.Element {
       setDescription(prefill?.description ?? '')
       setFavicon(prefill?.favicon ?? null)
       setThumbnail(prefill?.thumbnail ?? null)
+      setContent(prefill?.content ?? null)
       setTagIds(prefill?.tagIds ?? [])
     }
   }, [open, editLink, prefill])
@@ -79,6 +82,7 @@ export function LinkFormDialog(): JSX.Element {
       if (meta.description && !description) setDescription(meta.description)
       setFavicon(meta.favicon)
       setThumbnail(meta.thumbnail)
+      setContent(meta.content)
     } finally {
       setFetching(false)
     }
@@ -89,9 +93,9 @@ export function LinkFormDialog(): JSX.Element {
     setSaving(true)
     try {
       if (editId) {
-        await updateLink(editId, { kind, url, title, description, favicon, thumbnail, tagIds })
+        await updateLink(editId, { kind, url, title, description, favicon, thumbnail, content, tagIds })
       } else {
-        const id = await createLink({ kind, url, title, description, favicon, thumbnail, tagIds })
+        const id = await createLink({ kind, url, title, description, favicon, thumbnail, content, tagIds })
         selectNode(id, 'link')
       }
       close()

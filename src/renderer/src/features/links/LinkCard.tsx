@@ -3,14 +3,46 @@ import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { cn, initials } from '@/lib/utils'
+import { contentSnippet, parseSearch } from '@/lib/search'
+
+/** 스니펫에서 검색어를 강조 표시 */
+function highlight(text: string, term: string): React.ReactNode {
+  if (!term) return text
+  const lower = text.toLowerCase()
+  const t = term.toLowerCase()
+  const out: React.ReactNode[] = []
+  let i = 0
+  let k = 0
+  while (i < text.length) {
+    const idx = lower.indexOf(t, i)
+    if (idx === -1) {
+      out.push(text.slice(i))
+      break
+    }
+    if (idx > i) out.push(text.slice(i, idx))
+    out.push(
+      <mark key={k++} className="rounded-sm bg-amber-200 px-0.5 text-amber-900">
+        {text.slice(idx, idx + term.length)}
+      </mark>
+    )
+    i = idx + term.length
+  }
+  return out
+}
 
 export function LinkCard({ link }: { link: LinkWithTags }): JSX.Element {
   const selectedNodeId = useUiStore((s) => s.selectedNodeId)
+  const searchQuery = useUiStore((s) => s.searchQuery)
   const selectNode = useUiStore((s) => s.selectNode)
   const focusNode = useUiStore((s) => s.focusNode)
   const toggleFavorite = useAppStore((s) => s.toggleFavorite)
 
   const selected = selectedNodeId === link.id
+
+  // 전문검색: 본문에서만 매칭됐을 때 스니펫 표시
+  const q = parseSearch(searchQuery)
+  const inMeta = !!q.text && `${link.title} ${link.domain ?? ''} ${link.url}`.toLowerCase().includes(q.text)
+  const snip = q.text && !inMeta ? contentSnippet(link.content, q.text) : null
 
   return (
     <div
@@ -19,14 +51,24 @@ export function LinkCard({ link }: { link: LinkWithTags }): JSX.Element {
         focusNode(link.id)
       }}
       className={cn(
-        'group flex cursor-pointer items-center gap-2.5 border-b border-line px-3 py-2.5',
+        'group flex cursor-pointer items-start gap-2.5 border-b border-line px-3 py-2.5',
         selected ? 'bg-brand/5' : 'hover:bg-[#EEF2F7]'
       )}
     >
-      <Favicon link={link} />
+      <div className="pt-0.5">
+        <Favicon link={link} />
+      </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-body font-medium text-ink-strong">{link.title}</p>
         <p className="truncate text-sm text-ink-muted">{link.domain ?? link.url}</p>
+        {snip && (
+          <p className="mt-1 line-clamp-2 text-sm text-ink-muted">
+            <span className="mr-1 rounded-sm bg-amber-100 px-1 text-[10px] font-medium text-amber-700">
+              본문
+            </span>
+            {highlight(snip, q.text)}
+          </p>
+        )}
       </div>
       <button
         onClick={(e) => {

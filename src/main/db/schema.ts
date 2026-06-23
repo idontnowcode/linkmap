@@ -11,6 +11,7 @@ export const links = sqliteTable(
     favicon: text('favicon'),
     thumbnail: text('thumbnail'),
     note: text('note'),
+    content: text('content'),
     domain: text('domain'),
     favorite: integer('favorite', { mode: 'boolean' }).notNull().default(false),
     deletedAt: integer('deleted_at', { mode: 'timestamp_ms' }),
@@ -93,6 +94,7 @@ export const CREATE_TABLES_SQL = `
     favicon TEXT,
     thumbnail TEXT,
     note TEXT,
+    content TEXT,
     domain TEXT,
     favorite INTEGER NOT NULL DEFAULT 0,
     deleted_at INTEGER,
@@ -143,5 +145,6 @@ export const CREATE_TABLES_SQL = `
 
 // 기존 DB 업그레이드용 idempotent 마이그레이션 (각각 try/catch로 적용)
 export const MIGRATIONS: string[] = [
-  `ALTER TABLE links ADD COLUMN kind TEXT NOT NULL DEFAULT 'web'`
+  `ALTER TABLE links ADD COLUMN kind TEXT NOT NULL DEFAULT 'web'`,
+  `ALTER TABLE links ADD COLUMN content TEXT`
 ]

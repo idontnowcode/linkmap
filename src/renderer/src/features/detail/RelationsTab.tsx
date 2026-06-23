@@ -1,15 +1,28 @@
-import { ArrowRight, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowRight, Plus, Sparkles, Trash2 } from 'lucide-react'
 import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { edgeStyle } from '@/features/graph/edgeStyles'
+import { suggestRelations } from '@/lib/suggestRelations'
 
 export function RelationsTab({ link }: { link: LinkWithTags }): JSX.Element {
   const snapshot = useAppStore((s) => s.snapshot)
   const deleteRelation = useAppStore((s) => s.deleteRelation)
+  const createRelation = useAppStore((s) => s.createRelation)
   const openRelationDialog = useUiStore((s) => s.openRelationDialog)
   const selectNode = useUiStore((s) => s.selectNode)
   const focusNode = useUiStore((s) => s.focusNode)
+  const aiSuggest = useSettingsStore((s) => s.aiSuggest)
+
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  useEffect(() => setDismissed(new Set()), [link.id])
+
+  const suggestions = useMemo(
+    () => (aiSuggest ? suggestRelations(link.id, snapshot, dismissed) : []),
+    [aiSuggest, link.id, snapshot, dismissed]
+  )
 
   const labelOf = (id: string, kind: string): string => {
     if (kind === 'tag') return snapshot.tags.find((t) => t.id === id)?.name ?? '태그'
@@ -29,6 +42,48 @@ export function RelationsTab({ link }: { link: LinkWithTags }): JSX.Element {
       >
         <Plus size={15} /> 관계 추가
       </button>
+
+      {aiSuggest && suggestions.length > 0 && (
+        <div className="mb-4">
+          <div className="mb-2 flex items-center gap-1.5 text-label uppercase text-ink-muted">
+            <Sparkles size={12} className="text-brand" /> 추천 연결
+          </div>
+          <ul className="space-y-1.5">
+            {suggestions.map((s) => (
+              <li
+                key={s.link.id}
+                className="rounded-md border border-line bg-brand/[0.03] px-2.5 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 truncate text-body text-ink-strong">{s.link.title}</span>
+                  <button
+                    onClick={() =>
+                      void createRelation({
+                        sourceId: link.id,
+                        sourceKind: 'link',
+                        targetId: s.link.id,
+                        targetKind: 'link',
+                        type: 'related',
+                        label: 'related'
+                      })
+                    }
+                    className="rounded-[7px] bg-brand px-2.5 py-1 text-sm font-medium text-white"
+                  >
+                    추가
+                  </button>
+                  <button
+                    onClick={() => setDismissed((prev) => new Set(prev).add(s.link.id))}
+                    className="rounded-[7px] border border-line px-2.5 py-1 text-sm text-ink-muted hover:bg-list"
+                  >
+                    무시
+                  </button>
+                </div>
+                <p className="mt-1 text-sm text-ink-muted">{s.reason}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {related.length === 0 && (
         <p className="py-6 text-center text-body text-ink-muted">아직 관계가 없습니다</p>

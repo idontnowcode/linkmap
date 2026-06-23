@@ -13,14 +13,8 @@ export type RelationType =
   | 'supports'
   | 'custom'
 
-export const RELATION_TYPES: RelationType[] = [
-  'related',
-  'reference',
-  'uses',
-  'part_of',
-  'supports',
-  'custom'
-]
+// 사용자가 선택 가능한 관계 타입(단순화). 'reference'/'supports'는 레거시 데이터 렌더용으로만 유지.
+export const RELATION_TYPES: RelationType[] = ['related', 'uses', 'part_of', 'custom']
 
 export interface Link {
   id: string
@@ -32,6 +26,8 @@ export interface Link {
   favicon: string | null
   thumbnail: string | null
   note: string | null
+  /** 전문검색용 본문 텍스트 (수집 시 추출, 잘린 형태) */
+  content: string | null
   domain: string | null
   favorite: boolean
   deletedAt: number | null
@@ -91,6 +87,7 @@ export interface CreateLinkInput {
   title: string
   url: string
   description?: string | null
+  content?: string | null
   favicon?: string | null
   thumbnail?: string | null
   note?: string | null
@@ -122,6 +119,7 @@ export interface OgMeta {
   favicon: string | null
   thumbnail: string | null
   domain: string | null
+  content: string | null
 }
 
 /** 로컬 경로 분류 결과 (main의 fs.stat 기반) */

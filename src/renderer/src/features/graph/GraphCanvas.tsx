@@ -15,6 +15,7 @@ import {
 import type { LinkKind } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { parseSearch, matchLink, isEmptyQuery } from '@/lib/search'
 import { openTarget } from '@/lib/openLink'
 import { buildGraph, type FlowEdge, type FlowNode } from './graphLayout'
@@ -31,6 +32,8 @@ const edgeTypes = { relation: RelationEdge }
 export function GraphCanvas(): JSX.Element {
   const snapshot = useAppStore((s) => s.snapshot)
   const layout = useUiStore((s) => s.layout)
+  const showTags = useSettingsStore((s) => s.showTags)
+  const showCollections = useSettingsStore((s) => s.showCollections)
   const searchQuery = useUiStore((s) => s.searchQuery)
   const selectedNodeId = useUiStore((s) => s.selectedNodeId)
   const selectNode = useUiStore((s) => s.selectNode)
@@ -50,7 +53,7 @@ export function GraphCanvas(): JSX.Element {
     const layoutChanged = lastLayout.current !== layout
     lastLayout.current = layout
 
-    const built = buildGraph(snapshot, layout)
+    const built = buildGraph(snapshot, layout, { showTags, showCollections })
     const merged = built.nodes.map((n) => {
       if (layoutChanged) return n // 레이아웃 전환: 캐시 무시, 새 위치 사용
       const prev = positions.current.get(n.id)
@@ -63,7 +66,7 @@ export function GraphCanvas(): JSX.Element {
     if (layoutChanged) {
       requestAnimationFrame(() => fitView({ duration: 400, padding: 0.2 }))
     }
-  }, [snapshot, layout, setNodes, setEdges, fitView])
+  }, [snapshot, layout, showTags, showCollections, setNodes, setEdges, fitView])
 
   // 검색 매칭 노드 계산 (dim 처리용)
   const dimmedIds = useMemo(() => {
