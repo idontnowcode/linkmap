@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { File, Folder, Globe, Sparkles } from 'lucide-react'
+import { File, Folder, Globe, Plus, Sparkles } from 'lucide-react'
 import type { LinkKind } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Input'
+import { TAG_PALETTE } from '@/features/graph/edgeStyles'
 import { cn } from '@/lib/utils'
 
 export function LinkFormDialog(): JSX.Element {
@@ -19,6 +20,7 @@ export function LinkFormDialog(): JSX.Element {
   const editLink = useAppStore((s) => s.snapshot.links.find((l) => l.id === editId))
   const createLink = useAppStore((s) => s.createLink)
   const updateLink = useAppStore((s) => s.updateLink)
+  const createTag = useAppStore((s) => s.createTag)
 
   const [kind, setKind] = useState<LinkKind>('web')
   const [url, setUrl] = useState('')
@@ -27,6 +29,8 @@ export function LinkFormDialog(): JSX.Element {
   const [favicon, setFavicon] = useState<string | null>(null)
   const [thumbnail, setThumbnail] = useState<string | null>(null)
   const [tagIds, setTagIds] = useState<string[]>([])
+  const [addingTag, setAddingTag] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
   const [fetching, setFetching] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -35,6 +39,8 @@ export function LinkFormDialog(): JSX.Element {
   // 폼 초기화
   useEffect(() => {
     if (!open) return
+    setAddingTag(false)
+    setNewTagName('')
     if (editLink) {
       setKind(editLink.kind)
       setUrl(editLink.url)
@@ -96,6 +102,22 @@ export function LinkFormDialog(): JSX.Element {
 
   const toggleTag = (id: string): void =>
     setTagIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]))
+
+  const submitNewTag = async (): Promise<void> => {
+    const name = newTagName.trim()
+    setAddingTag(false)
+    setNewTagName('')
+    if (!name) return
+    // 같은 이름이 있으면 새로 만들지 않고 선택만
+    const existing = tags.find((t) => t.name.toLowerCase() === name.toLowerCase())
+    if (existing) {
+      setTagIds((prev) => (prev.includes(existing.id) ? prev : [...prev, existing.id]))
+      return
+    }
+    const color = TAG_PALETTE[tags.length % TAG_PALETTE.length]
+    const id = await createTag({ name, color })
+    setTagIds((prev) => [...prev, id])
+  }
 
   return (
     <Modal
@@ -165,7 +187,7 @@ export function LinkFormDialog(): JSX.Element {
       </Field>
 
       <Field label="태그">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {tags.map((t) => {
             const on = tagIds.includes(t.id)
             return (
@@ -183,7 +205,33 @@ export function LinkFormDialog(): JSX.Element {
               </button>
             )
           })}
-          {tags.length === 0 && <span className="text-sm text-ink-muted">태그를 먼저 만들어 주세요</span>}
+
+          {addingTag ? (
+            <input
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              onBlur={() => void submitNewTag()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void submitNewTag()
+                } else if (e.key === 'Escape') {
+                  setAddingTag(false)
+                  setNewTagName('')
+                }
+              }}
+              placeholder="태그 이름"
+              autoFocus
+              className="h-[28px] w-24 rounded-sm border border-brand px-2 text-sm text-ink-strong outline-none"
+            />
+          ) : (
+            <button
+              onClick={() => setAddingTag(true)}
+              className="flex items-center gap-1 rounded-sm border border-dashed border-line px-2 py-1 text-sm text-ink-muted hover:border-brand hover:text-brand"
+            >
+              <Plus size={12} /> 새 태그
+            </button>
+          )}
         </div>
       </Field>
     </Modal>
