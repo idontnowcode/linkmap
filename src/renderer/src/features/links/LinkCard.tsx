@@ -30,7 +30,21 @@ function highlight(text: string, term: string): React.ReactNode {
   return out
 }
 
-export function LinkCard({ link }: { link: LinkWithTags }): JSX.Element {
+interface LinkCardProps {
+  link: LinkWithTags
+  selectMode?: boolean
+  checked?: boolean
+  onToggleSelect?: (id: string) => void
+  onContextMenu?: (e: React.MouseEvent, link: LinkWithTags) => void
+}
+
+export function LinkCard({
+  link,
+  selectMode = false,
+  checked = false,
+  onToggleSelect,
+  onContextMenu
+}: LinkCardProps): JSX.Element {
   const selectedNodeId = useUiStore((s) => s.selectedNodeId)
   const searchQuery = useUiStore((s) => s.searchQuery)
   const selectNode = useUiStore((s) => s.selectNode)
@@ -47,14 +61,28 @@ export function LinkCard({ link }: { link: LinkWithTags }): JSX.Element {
   return (
     <div
       onClick={() => {
+        if (selectMode) {
+          onToggleSelect?.(link.id)
+          return
+        }
         selectNode(link.id, 'link')
         focusNode(link.id)
       }}
+      onContextMenu={(e) => onContextMenu?.(e, link)}
       className={cn(
         'group flex cursor-pointer items-start gap-2.5 border-b border-line px-3 py-2.5',
-        selected ? 'bg-brand/5' : 'hover:bg-[#EEF2F7]'
+        selectMode && checked ? 'bg-brand/10' : selected ? 'bg-brand/5' : 'hover:bg-[#EEF2F7]'
       )}
     >
+      {selectMode && (
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={() => onToggleSelect?.(link.id)}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-1 h-4 w-4 shrink-0 accent-brand"
+        />
+      )}
       <div className="pt-0.5">
         <Favicon link={link} />
       </div>

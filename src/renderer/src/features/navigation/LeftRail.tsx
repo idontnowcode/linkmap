@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   Clock,
   FolderClosed,
@@ -12,22 +13,36 @@ import { useAppStore } from '@/store/appStore'
 import { useUiStore, type ActiveView } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
+import { ContextMenu } from '@/components/ui/ContextMenu'
 
 function sameView(a: ActiveView, b: ActiveView): boolean {
   return a.kind === b.kind && a.id === b.id
 }
+
+type RailMenu = { x: number; y: number; kind: 'tag' | 'collection'; id: string; name: string }
 
 export function LeftRail(): JSX.Element {
   const tags = useAppStore((s) => s.snapshot.tags)
   const collections = useAppStore((s) => s.snapshot.collections)
   const counts = useAppStore((s) => s.counts)
   const deleteCollection = useAppStore((s) => s.deleteCollection)
+  const deleteTag = useAppStore((s) => s.deleteTag)
   const activeView = useUiStore((s) => s.activeView)
   const setView = useUiStore((s) => s.setView)
   const openLinkForm = useUiStore((s) => s.openLinkForm)
   const openTagForm = useUiStore((s) => s.openTagForm)
   const openCollectionForm = useUiStore((s) => s.openCollectionForm)
   const openSettings = useUiStore((s) => s.openSettings)
+
+  const [menu, setMenu] = useState<RailMenu | null>(null)
+
+  const removeItem = (m: RailMenu): void => {
+    const what = m.kind === 'tag' ? '태그' : '컬렉션'
+    if (!confirm(`'${m.name}' ${what}을(를) 삭제할까요? (링크 자체는 삭제되지 않습니다)`)) return
+    if (m.kind === 'tag') void deleteTag(m.id)
+    else void deleteCollection(m.id)
+    if (sameView(activeView, { kind: m.kind, id: m.id })) setView({ kind: 'smart', id: 'all' })
+  }
 
   const smartViews = [
     { id: 'all', label: '모든 링크', icon: Link2, count: counts.all },
@@ -86,6 +101,11 @@ export function LeftRail(): JSX.Element {
               <button
                 key={t.id}
                 onClick={() => setView({ kind: 'tag', id: t.id })}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setMenu({ x: e.clientX, y: e.clientY, kind: 'tag', id: t.id, name: t.name })
+                }}
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-body',
                   active ? 'bg-rail-active text-white' : 'text-ink-dark hover:bg-rail-hover'
@@ -109,6 +129,11 @@ export function LeftRail(): JSX.Element {
               <div
                 key={c.id}
                 onClick={() => setView({ kind: 'collection', id: c.id })}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setMenu({ x: e.clientX, y: e.clientY, kind: 'collection', id: c.id, name: c.name })
+                }}
                 className={cn(
                   'group/col flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-body',
                   active ? 'bg-rail-active text-white' : 'text-ink-dark hover:bg-rail-hover'
@@ -145,6 +170,22 @@ export function LeftRail(): JSX.Element {
       >
         <Settings size={16} /> 설정
       </button>
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            {
+              label: menu.kind === 'tag' ? '태그 삭제' : '컬렉션 삭제',
+              icon: <Trash2 size={14} />,
+              danger: true,
+              onClick: () => removeItem(menu)
+            }
+          ]}
+        />
+      )}
     </aside>
   )
 }

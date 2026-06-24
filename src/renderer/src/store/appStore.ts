@@ -23,6 +23,9 @@ interface AppState {
   restoreLink: (id: string) => Promise<void>
   deleteLink: (id: string) => Promise<void>
   toggleFavorite: (id: string) => Promise<void>
+  bulkTrash: (ids: string[]) => Promise<void>
+  bulkRestore: (ids: string[]) => Promise<void>
+  bulkDelete: (ids: string[]) => Promise<void>
 
   createTag: (input: CreateTagInput) => Promise<string>
   deleteTag: (id: string) => Promise<void>
@@ -97,6 +100,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   toggleFavorite: async (id) => {
     await window.api.toggleFavorite(id)
+    await get().refresh()
+  },
+  bulkTrash: async (ids) => {
+    for (const id of ids) await window.api.trashLink(id)
+    await get().refresh()
+  },
+  bulkRestore: async (ids) => {
+    for (const id of ids) await window.api.restoreLink(id)
+    await get().refresh()
+  },
+  bulkDelete: async (ids) => {
+    for (const id of ids) await window.api.deleteLink(id)
     await get().refresh()
   },
 

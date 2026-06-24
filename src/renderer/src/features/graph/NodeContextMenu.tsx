@@ -22,6 +22,8 @@ export function NodeContextMenu({
   onClose: () => void
 }): JSX.Element {
   const trashLink = useAppStore((s) => s.trashLink)
+  const deleteTag = useAppStore((s) => s.deleteTag)
+  const deleteCollection = useAppStore((s) => s.deleteCollection)
   const openLinkForm = useUiStore((s) => s.openLinkForm)
   const openRelationDialog = useUiStore((s) => s.openRelationDialog)
   const openCollectionPicker = useUiStore((s) => s.openCollectionPicker)
@@ -85,6 +87,28 @@ export function NodeContextMenu({
           danger
           onClick={() => {
             void trashLink(menu.nodeId)
+            onClose()
+          }}
+        />
+      )}
+      {menu.kind === 'tag' && (
+        <Item
+          icon={<Trash2 size={14} />}
+          label="태그 삭제"
+          danger
+          onClick={() => {
+            if (confirm('이 태그를 삭제할까요? (링크 자체는 삭제되지 않습니다)')) void deleteTag(menu.nodeId)
+            onClose()
+          }}
+        />
+      )}
+      {menu.kind === 'collection' && (
+        <Item
+          icon={<Trash2 size={14} />}
+          label="컬렉션 삭제"
+          danger
+          onClick={() => {
+            if (confirm('이 컬렉션을 삭제할까요? (링크 자체는 삭제되지 않습니다)')) void deleteCollection(menu.nodeId)
             onClose()
           }}
         />
