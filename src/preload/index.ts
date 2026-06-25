@@ -22,6 +22,7 @@ const api: LinkMapApi = {
   createCollection: (name, parentId = null) =>
     ipcRenderer.invoke(IPC.collectionCreate, name, parentId),
   deleteCollection: (id) => ipcRenderer.invoke(IPC.collectionDelete, id),
+  moveCollection: (id, parentId) => ipcRenderer.invoke(IPC.collectionMove, id, parentId),
   addLinkToCollection: (collectionId, linkId) =>
     ipcRenderer.invoke(IPC.collectionAddLink, collectionId, linkId),
   removeLinkFromCollection: (collectionId, linkId) =>

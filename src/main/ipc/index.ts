@@ -47,6 +47,9 @@ export function registerIpcHandlers(): void {
     collectionRepo.create(name, parentId)
   )
   ipcMain.handle(IPC.collectionDelete, (_e, id: string) => collectionRepo.remove(id))
+  ipcMain.handle(IPC.collectionMove, (_e, id: string, parentId: string | null) =>
+    collectionRepo.move(id, parentId)
+  )
   ipcMain.handle(IPC.collectionAddLink, (_e, collectionId: string, linkId: string) =>
     collectionRepo.addLink(collectionId, linkId)
   )

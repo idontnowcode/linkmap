@@ -35,6 +35,7 @@ export const IPC = {
 
   collectionCreate: 'collections:create',
   collectionDelete: 'collections:delete',
+  collectionMove: 'collections:move',
   collectionAddLink: 'collections:addLink',
   collectionRemoveLink: 'collections:removeLink',
 
@@ -67,6 +68,7 @@ export interface LinkMapApi {
 
   createCollection(name: string, parentId?: string | null): Promise<Collection>
   deleteCollection(id: string): Promise<void>
+  moveCollection(id: string, parentId: string | null): Promise<void>
   addLinkToCollection(collectionId: string, linkId: string): Promise<void>
   removeLinkFromCollection(collectionId: string, linkId: string): Promise<void>
 

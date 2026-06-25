@@ -29,6 +29,7 @@ export function LeftRail(): JSX.Element {
   const collections = useAppStore((s) => s.snapshot.collections)
   const counts = useAppStore((s) => s.counts)
   const deleteCollection = useAppStore((s) => s.deleteCollection)
+  const moveCollection = useAppStore((s) => s.moveCollection)
   const deleteTag = useAppStore((s) => s.deleteTag)
   const activeView = useUiStore((s) => s.activeView)
   const setView = useUiStore((s) => s.setView)
@@ -39,6 +40,8 @@ export function LeftRail(): JSX.Element {
 
   const [menu, setMenu] = useState<RailMenu | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | 'root' | null>(null)
 
   const removeItem = (m: RailMenu): void => {
     const what = m.kind === 'tag' ? '태그' : '컬렉션'
@@ -68,14 +71,56 @@ export function LeftRail(): JSX.Element {
       return n
     })
 
+  const descendantsOf = (id: string): Set<string> => {
+    const out = new Set<string>()
+    const stack = (childrenOf.get(id) ?? []).map((c) => c.id)
+    while (stack.length) {
+      const x = stack.pop()!
+      if (out.has(x)) continue
+      out.add(x)
+      for (const ch of childrenOf.get(x) ?? []) stack.push(ch.id)
+    }
+    return out
+  }
+
+  // drag→target 이동 가능 여부 (자기 자신/하위로는 불가 = 사이클 방지)
+  const canDropOn = (target: string): boolean =>
+    !!dragId && dragId !== target && !descendantsOf(dragId).has(target)
+
   const renderCollection = (c: Collection, depth: number): JSX.Element => {
     const kids = childrenOf.get(c.id) ?? []
     const hasKids = kids.length > 0
     const isCollapsed = collapsed.has(c.id)
     const active = sameView(activeView, { kind: 'collection', id: c.id })
+    const isDropHere = dropTarget === c.id
     return (
       <div key={c.id}>
         <div
+          draggable
+          onDragStart={(e) => {
+            e.stopPropagation()
+            setDragId(c.id)
+            e.dataTransfer.setData('application/x-linkmap-collection', c.id)
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onDragEnd={() => {
+            setDragId(null)
+            setDropTarget(null)
+          }}
+          onDragOver={(e) => {
+            if (!canDropOn(c.id)) return
+            e.preventDefault()
+            e.stopPropagation()
+            e.dataTransfer.dropEffect = 'move'
+            if (dropTarget !== c.id) setDropTarget(c.id)
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (canDropOn(c.id)) void moveCollection(dragId!, c.id)
+            setDragId(null)
+            setDropTarget(null)
+          }}
           onClick={() => setView({ kind: 'collection', id: c.id })}
           onContextMenu={(e) => {
             e.preventDefault()
@@ -85,7 +130,11 @@ export function LeftRail(): JSX.Element {
           style={{ paddingLeft: 8 + depth * 14 }}
           className={cn(
             'group/col flex w-full cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2.5 text-body',
-            active ? 'bg-rail-active text-white' : 'text-ink-dark hover:bg-rail-hover'
+            isDropHere
+              ? 'bg-brand/30 ring-1 ring-brand'
+              : active
+                ? 'bg-rail-active text-white'
+                : 'text-ink-dark hover:bg-rail-hover'
           )}
         >
           {hasKids ? (
@@ -204,6 +253,31 @@ export function LeftRail(): JSX.Element {
           {(childrenOf.get(null) ?? []).map((c) => renderCollection(c, 0))}
           {collections.length === 0 && <Empty>컬렉션 없음</Empty>}
         </div>
+        {dragId && (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              e.dataTransfer.dropEffect = 'move'
+              if (dropTarget !== 'root') setDropTarget('root')
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              void moveCollection(dragId, null)
+              setDragId(null)
+              setDropTarget(null)
+            }}
+            className={cn(
+              'mt-1.5 rounded-md border border-dashed px-2.5 py-2 text-center text-sm transition-colors',
+              dropTarget === 'root'
+                ? 'border-brand bg-brand/20 text-white'
+                : 'border-white/15 text-ink-dark-muted'
+            )}
+          >
+            ↥ 여기에 놓으면 최상위로
+          </div>
+        )}
       </div>
 
       {/* Footer */}

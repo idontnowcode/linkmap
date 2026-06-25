@@ -193,6 +193,10 @@ export const collectionRepo = {
   async remove(id: string): Promise<void> {
     await getDb().delete(collections).where(eq(collections.id, id)).run()
   },
+  async move(id: string, parentId: string | null): Promise<void> {
+    if (id === parentId) return
+    await getDb().update(collections).set({ parentId }).where(eq(collections.id, id)).run()
+  },
   async addLink(collectionId: string, linkId: string): Promise<void> {
     await getDb()
       .insert(collectionLinks)
