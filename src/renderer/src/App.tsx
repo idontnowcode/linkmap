@@ -34,8 +34,14 @@ export default function App(): JSX.Element {
 
   // URL drag & drop → 새 링크 폼 (메타 자동 수집)
   useEffect(() => {
-    const isInternalDrag = (e: DragEvent): boolean =>
-      e.dataTransfer?.types?.includes('application/x-linkmap-collection') ?? false
+    const isInternalDrag = (e: DragEvent): boolean => {
+      const t = e.dataTransfer?.types
+      return (
+        (t?.includes('application/x-linkmap-collection') ||
+          t?.includes('application/x-linkmap-link')) ??
+        false
+      )
+    }
 
     const onDragOver = (e: DragEvent): void => {
       if (isInternalDrag(e)) return // 사이드바 폴더 이동 드래그는 무시

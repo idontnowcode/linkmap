@@ -30,6 +30,7 @@ export function LeftRail(): JSX.Element {
   const counts = useAppStore((s) => s.counts)
   const deleteCollection = useAppStore((s) => s.deleteCollection)
   const moveCollection = useAppStore((s) => s.moveCollection)
+  const addLinkToCollection = useAppStore((s) => s.addLinkToCollection)
   const deleteTag = useAppStore((s) => s.deleteTag)
   const activeView = useUiStore((s) => s.activeView)
   const setView = useUiStore((s) => s.setView)
@@ -108,16 +109,21 @@ export function LeftRail(): JSX.Element {
             setDropTarget(null)
           }}
           onDragOver={(e) => {
-            if (!canDropOn(c.id)) return
+            const t = e.dataTransfer.types
+            const linkDrag = t.includes('application/x-linkmap-link')
+            const colDrag = t.includes('application/x-linkmap-collection') && canDropOn(c.id)
+            if (!linkDrag && !colDrag) return
             e.preventDefault()
             e.stopPropagation()
-            e.dataTransfer.dropEffect = 'move'
+            e.dataTransfer.dropEffect = linkDrag ? 'copy' : 'move'
             if (dropTarget !== c.id) setDropTarget(c.id)
           }}
           onDrop={(e) => {
             e.preventDefault()
             e.stopPropagation()
-            if (canDropOn(c.id)) void moveCollection(dragId!, c.id)
+            const linkId = e.dataTransfer.getData('application/x-linkmap-link')
+            if (linkId) void addLinkToCollection(c.id, linkId)
+            else if (canDropOn(c.id)) void moveCollection(dragId!, c.id)
             setDragId(null)
             setDropTarget(null)
           }}

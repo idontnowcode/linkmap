@@ -60,6 +60,11 @@ export function LinkCard({
 
   return (
     <div
+      draggable={!selectMode}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/x-linkmap-link', link.id)
+        e.dataTransfer.effectAllowed = 'copyMove'
+      }}
       onClick={() => {
         if (selectMode) {
           onToggleSelect?.(link.id)
@@ -135,6 +140,7 @@ export function Favicon({ link, size = 18 }: { link: LinkWithTags; size?: number
         alt=""
         width={size}
         height={size}
+        draggable={false}
         className="shrink-0 rounded-sm"
         onError={(e) => {
           ;(e.currentTarget as HTMLImageElement).style.display = 'none'
