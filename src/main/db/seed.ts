@@ -173,33 +173,25 @@ export async function seedIfEmpty(): Promise<void> {
   await rel('Test/Report', 'pwrreport', 'related', 'Report', 'tag')
   await rel('PCB/EDA', 'kicadpro', 'related', 'PCB', 'tag')
 
-  // ── Collections (폴더) + 멤버십 ──────────────────────────
-  const colDefs: { name: string; members: string[] }[] = [
-    {
-      name: 'Project: Smart Sensor Node',
-      members: ['fwrepo', 'mainc', 'bmedrv', 'hwrepo', 'kicadpro', 'bom', 'pwrreport', 'blerange', 'ds_bme280', 'ds_stm32', 'ncs']
-    },
-    {
-      name: 'Datasheets & App Notes',
-      members: ['ds_stm32', 'ds_bme280', 'ds_tps', 'ds_nrf', 'an_timer', 'cortexm4', 'i2cspec', 'cmsis']
-    },
-    {
-      name: 'Test Reports & Measurements',
-      members: ['pwrreport', 'thermal', 'emc', 'blerange', 'i2ccap', 'bringup']
-    },
-    {
-      name: 'Schematic & PCB',
-      members: ['hwrepo', 'kicadpro', 'bom', 'gerber', 'kicad', 'ds_tps']
-    },
-    {
-      name: 'Firmware & Toolchain',
-      members: ['fwrepo', 'mainc', 'bmedrv', 'fwhex', 'armgcc', 'cubeide', 'cubemx', 'openocd', 'jlink']
-    },
-    { name: 'RTOS & SDK', members: ['freertos', 'zephyr', 'ncs', 'espidf'] }
+  // ── Collections (폴더 트리) + 멤버십 ─────────────────────
+  // parent 키로 폴더 안 폴더 구성. 부모는 자식보다 먼저 선언.
+  const colDefs: { key: string; name: string; parent?: string; members: string[] }[] = [
+    { key: 'proj', name: 'Project: Smart Sensor Node', members: ['ds_bme280', 'ds_stm32', 'ncs'] },
+    { key: 'proj_fw', name: 'Firmware', parent: 'proj', members: ['fwrepo', 'mainc', 'bmedrv', 'fwhex'] },
+    { key: 'proj_hw', name: 'Hardware', parent: 'proj', members: ['hwrepo', 'kicadpro', 'bom', 'gerber'] },
+    { key: 'proj_rep', name: 'Reports', parent: 'proj', members: ['pwrreport', 'thermal', 'emc', 'blerange', 'i2ccap', 'bringup'] },
+    { key: 'ds', name: 'Datasheets & App Notes', members: ['ds_stm32', 'ds_bme280', 'ds_tps', 'ds_nrf', 'an_timer', 'cortexm4', 'i2cspec', 'cmsis'] },
+    { key: 'tool', name: 'Toolchain & Debug', members: ['armgcc', 'cubeide', 'cubemx', 'openocd', 'jlink', 'saleae'] },
+    { key: 'rtos', name: 'RTOS & SDK', members: ['freertos', 'zephyr', 'ncs', 'espidf'] }
   ]
+  const colIds: Record<string, string> = {}
   for (const col of colDefs) {
     const id = nanoid()
-    await db.insert(collections).values({ id, name: col.name, createdAt: now }).run()
+    colIds[col.key] = id
+    await db
+      .insert(collections)
+      .values({ id, name: col.name, parentId: col.parent ? colIds[col.parent] : null, createdAt: now })
+      .run()
     for (const key of col.members) {
       await db.insert(collectionLinks).values({ collectionId: id, linkId: linkIds[key] }).run()
     }

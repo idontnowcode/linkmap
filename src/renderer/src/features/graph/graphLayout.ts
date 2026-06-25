@@ -68,7 +68,7 @@ export function buildGraph(
     if (r.targetKind === 'collection' && showCollections) colNodeIds.add(r.targetId)
   }
 
-  // 컬렉션 멤버십 → 컬렉션 노드 + '포함' 점선 엣지
+  // 컬렉션 멤버십 → 컬렉션 노드 + '포함' 점선 엣지, + 폴더 트리(parent→child)
   const membershipEdges: FlowEdge[] = []
   if (showCollections) {
     for (const cl of snapshot.collectionLinks) {
@@ -81,6 +81,26 @@ export function buildGraph(
         type: 'relation',
         data: { relationType: 'custom', label: '포함', membership: true }
       })
+    }
+    // 표시되는 컬렉션의 상위 폴더 체인까지 포함
+    for (const id of [...colNodeIds]) {
+      let cur = colById.get(id)
+      while (cur?.parentId) {
+        colNodeIds.add(cur.parentId)
+        cur = colById.get(cur.parentId)
+      }
+    }
+    // 폴더 트리 엣지 (상위 → 하위)
+    for (const c of snapshot.collections) {
+      if (c.parentId && colNodeIds.has(c.id) && colNodeIds.has(c.parentId)) {
+        membershipEdges.push({
+          id: `col-${c.parentId}-${c.id}`,
+          source: c.parentId,
+          target: c.id,
+          type: 'relation',
+          data: { relationType: 'custom', label: '하위', membership: true }
+        })
+      }
     }
   }
 

@@ -55,6 +55,8 @@ export interface Relation {
 export interface Collection {
   id: string
   name: string
+  /** 상위 컬렉션 id (없으면 최상위) — 폴더 안 폴더 */
+  parentId: string | null
   createdAt: number
 }
 

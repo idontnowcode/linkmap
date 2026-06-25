@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
+  ChevronDown,
+  ChevronRight,
   Clock,
   FolderClosed,
   Link2,
@@ -9,6 +11,7 @@ import {
   Star,
   Trash2
 } from 'lucide-react'
+import type { Collection } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore, type ActiveView } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
@@ -35,13 +38,88 @@ export function LeftRail(): JSX.Element {
   const openSettings = useUiStore((s) => s.openSettings)
 
   const [menu, setMenu] = useState<RailMenu | null>(null)
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const removeItem = (m: RailMenu): void => {
     const what = m.kind === 'tag' ? '태그' : '컬렉션'
-    if (!confirm(`'${m.name}' ${what}을(를) 삭제할까요? (링크 자체는 삭제되지 않습니다)`)) return
+    const extra = m.kind === 'collection' ? ' (하위 폴더 포함, 링크 자체는 보존)' : ' (링크 자체는 보존)'
+    if (!confirm(`'${m.name}' ${what}을(를) 삭제할까요?${extra}`)) return
     if (m.kind === 'tag') void deleteTag(m.id)
     else void deleteCollection(m.id)
     if (sameView(activeView, { kind: m.kind, id: m.id })) setView({ kind: 'smart', id: 'all' })
+  }
+
+  // 컬렉션 트리 (parentId 기반)
+  const childrenOf = useMemo(() => {
+    const m = new Map<string | null, Collection[]>()
+    for (const c of collections) {
+      const k = c.parentId ?? null
+      const arr = m.get(k) ?? []
+      arr.push(c)
+      m.set(k, arr)
+    }
+    return m
+  }, [collections])
+
+  const toggleCollapse = (id: string): void =>
+    setCollapsed((prev) => {
+      const n = new Set(prev)
+      n.has(id) ? n.delete(id) : n.add(id)
+      return n
+    })
+
+  const renderCollection = (c: Collection, depth: number): JSX.Element => {
+    const kids = childrenOf.get(c.id) ?? []
+    const hasKids = kids.length > 0
+    const isCollapsed = collapsed.has(c.id)
+    const active = sameView(activeView, { kind: 'collection', id: c.id })
+    return (
+      <div key={c.id}>
+        <div
+          onClick={() => setView({ kind: 'collection', id: c.id })}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setMenu({ x: e.clientX, y: e.clientY, kind: 'collection', id: c.id, name: c.name })
+          }}
+          style={{ paddingLeft: 8 + depth * 14 }}
+          className={cn(
+            'group/col flex w-full cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2.5 text-body',
+            active ? 'bg-rail-active text-white' : 'text-ink-dark hover:bg-rail-hover'
+          )}
+        >
+          {hasKids ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleCollapse(c.id)
+              }}
+              className="shrink-0 text-ink-dark-muted hover:text-white"
+            >
+              {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+            </button>
+          ) : (
+            <span className="w-[13px] shrink-0" />
+          )}
+          <FolderClosed size={15} className="shrink-0 opacity-80" />
+          <span className="flex-1 truncate text-left">{c.name}</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              openCollectionForm(c.id)
+            }}
+            className="hidden shrink-0 text-ink-dark-muted hover:text-white group-hover/col:block"
+            title="하위 컬렉션 추가"
+          >
+            <Plus size={13} />
+          </button>
+          <span className="text-sm text-ink-dark-muted group-hover/col:hidden">
+            {counts.byCollection[c.id] ?? 0}
+          </span>
+        </div>
+        {hasKids && !isCollapsed && kids.map((k) => renderCollection(k, depth + 1))}
+      </div>
+    )
   }
 
   const smartViews = [
@@ -120,45 +198,10 @@ export function LeftRail(): JSX.Element {
           {tags.length === 0 && <Empty>태그 없음</Empty>}
         </div>
 
-        {/* Collections */}
-        <SectionLabel label="폴더(컬렉션)" onAdd={openCollectionForm} />
+        {/* Collections (트리) */}
+        <SectionLabel label="폴더(컬렉션)" onAdd={() => openCollectionForm()} />
         <div className="space-y-0.5">
-          {collections.map((c) => {
-            const active = sameView(activeView, { kind: 'collection', id: c.id })
-            return (
-              <div
-                key={c.id}
-                onClick={() => setView({ kind: 'collection', id: c.id })}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setMenu({ x: e.clientX, y: e.clientY, kind: 'collection', id: c.id, name: c.name })
-                }}
-                className={cn(
-                  'group/col flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1.5 text-body',
-                  active ? 'bg-rail-active text-white' : 'text-ink-dark hover:bg-rail-hover'
-                )}
-              >
-                <FolderClosed size={15} className="shrink-0 opacity-80" />
-                <span className="flex-1 truncate text-left">{c.name}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (confirm(`'${c.name}' 컬렉션을 삭제할까요? (링크는 삭제되지 않습니다)`)) {
-                      void deleteCollection(c.id)
-                    }
-                  }}
-                  className="hidden shrink-0 text-ink-dark-muted hover:text-white group-hover/col:block"
-                  title="컬렉션 삭제"
-                >
-                  <Trash2 size={13} />
-                </button>
-                <span className="text-sm text-ink-dark-muted group-hover/col:hidden">
-                  {counts.byCollection[c.id] ?? 0}
-                </span>
-              </div>
-            )
-          })}
+          {(childrenOf.get(null) ?? []).map((c) => renderCollection(c, 0))}
           {collections.length === 0 && <Empty>컬렉션 없음</Empty>}
         </div>
       </div>
@@ -176,14 +219,30 @@ export function LeftRail(): JSX.Element {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          items={[
-            {
-              label: menu.kind === 'tag' ? '태그 삭제' : '컬렉션 삭제',
-              icon: <Trash2 size={14} />,
-              danger: true,
-              onClick: () => removeItem(menu)
-            }
-          ]}
+          items={
+            menu.kind === 'collection'
+              ? [
+                  {
+                    label: '하위 컬렉션 추가',
+                    icon: <Plus size={14} />,
+                    onClick: () => openCollectionForm(menu.id)
+                  },
+                  {
+                    label: '컬렉션 삭제',
+                    icon: <Trash2 size={14} />,
+                    danger: true,
+                    onClick: () => removeItem(menu)
+                  }
+                ]
+              : [
+                  {
+                    label: '태그 삭제',
+                    icon: <Trash2 size={14} />,
+                    danger: true,
+                    onClick: () => removeItem(menu)
+                  }
+                ]
+          }
         />
       )}
     </aside>

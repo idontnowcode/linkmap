@@ -7,8 +7,10 @@ import { Field, Input } from '@/components/ui/Input'
 
 export function CollectionFormDialog(): JSX.Element {
   const open = useUiStore((s) => s.collectionFormOpen)
+  const parentId = useUiStore((s) => s.collectionFormParentId)
   const close = useUiStore((s) => s.closeCollectionForm)
   const createCollection = useAppStore((s) => s.createCollection)
+  const parent = useAppStore((s) => s.snapshot.collections.find((c) => c.id === parentId))
 
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -21,7 +23,7 @@ export function CollectionFormDialog(): JSX.Element {
     if (!name.trim()) return
     setSaving(true)
     try {
-      await createCollection(name.trim())
+      await createCollection(name.trim(), parentId)
       close()
     } finally {
       setSaving(false)
@@ -32,7 +34,7 @@ export function CollectionFormDialog(): JSX.Element {
     <Modal
       open={open}
       onClose={close}
-      title="새 컬렉션"
+      title={parent ? '새 하위 컬렉션' : '새 컬렉션'}
       width={400}
       footer={
         <>
@@ -45,11 +47,16 @@ export function CollectionFormDialog(): JSX.Element {
         </>
       }
     >
+      {parent && (
+        <p className="mb-3 rounded-md bg-list px-3 py-2 text-sm text-ink-muted">
+          상위 폴더: <span className="font-medium text-ink-strong">{parent.name}</span>
+        </p>
+      )}
       <Field label="이름">
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="예: Project Alpha"
+          placeholder={parent ? '예: Firmware' : '예: Project Alpha'}
           autoFocus
           onKeyDown={(e) => e.key === 'Enter' && void submit()}
         />

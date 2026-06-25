@@ -1,4 +1,6 @@
+import { useMemo } from 'react'
 import { Check, FolderClosed, Plus } from 'lucide-react'
+import type { Collection } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { Modal } from '@/components/ui/Modal'
@@ -19,6 +21,24 @@ export function CollectionPickerDialog(): JSX.Element {
   const memberSet = new Set(
     collectionLinks.filter((cl) => cl.linkId === linkId).map((cl) => cl.collectionId)
   )
+
+  // 트리 순서 + 깊이 (들여쓰기용)
+  const ordered = useMemo(() => {
+    const childrenOf = new Map<string | null, Collection[]>()
+    for (const c of collections) {
+      const k = c.parentId ?? null
+      childrenOf.set(k, [...(childrenOf.get(k) ?? []), c])
+    }
+    const out: { c: Collection; depth: number }[] = []
+    const walk = (parent: string | null, depth: number): void => {
+      for (const c of childrenOf.get(parent) ?? []) {
+        out.push({ c, depth })
+        walk(c.id, depth + 1)
+      }
+    }
+    walk(null, 0)
+    return out
+  }, [collections])
 
   const toggle = (collectionId: string): void => {
     if (!linkId) return
@@ -45,14 +65,15 @@ export function CollectionPickerDialog(): JSX.Element {
       )}
 
       <div className="mb-3 max-h-60 space-y-1 overflow-y-auto">
-        {collections.map((c) => {
+        {ordered.map(({ c, depth }) => {
           const member = memberSet.has(c.id)
           return (
             <button
               key={c.id}
               onClick={() => toggle(c.id)}
+              style={{ paddingLeft: 12 + depth * 16 }}
               className={cn(
-                'flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-body transition-colors',
+                'flex w-full items-center gap-2.5 rounded-md border py-2 pr-3 text-body transition-colors',
                 member ? 'border-brand bg-brand/5 text-ink-strong' : 'border-line text-ink-strong hover:bg-list'
               )}
             >
@@ -68,7 +89,7 @@ export function CollectionPickerDialog(): JSX.Element {
       </div>
 
       <button
-        onClick={openCollectionForm}
+        onClick={() => openCollectionForm()}
         className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-line py-2 text-body text-ink-muted hover:border-brand hover:text-brand"
       >
         <Plus size={15} /> 새 컬렉션 만들기

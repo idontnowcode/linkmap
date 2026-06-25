@@ -184,9 +184,9 @@ export const relationRepo = {
 
 // ── Collections ──────────────────────────────────────────
 export const collectionRepo = {
-  async create(name: string): Promise<Collection> {
+  async create(name: string, parentId: string | null = null): Promise<Collection> {
     const db = getDb()
-    const col = { id: nanoid(), name, createdAt: new Date() }
+    const col = { id: nanoid(), name, parentId, createdAt: new Date() }
     await db.insert(collections).values(col).run()
     return { ...col, createdAt: col.createdAt.getTime() }
   },
@@ -235,7 +235,12 @@ export const graphRepo = {
     return {
       links: linkRows.map((r) => ({ ...toLink(r), tagIds: tagsByLink.get(r.id) ?? [] })),
       tags: tagRows,
-      collections: colRows.map((c) => ({ ...c, createdAt: c.createdAt.getTime() })),
+      collections: colRows.map((c) => ({
+        id: c.id,
+        name: c.name,
+        parentId: c.parentId,
+        createdAt: c.createdAt.getTime()
+      })),
       relations: relRows.map((r) => ({
         ...r,
         sourceKind: r.sourceKind as NodeKind,

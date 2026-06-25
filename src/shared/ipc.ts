@@ -65,7 +65,7 @@ export interface LinkMapApi {
   createRelation(input: CreateRelationInput): Promise<Relation>
   deleteRelation(id: string): Promise<void>
 
-  createCollection(name: string): Promise<Collection>
+  createCollection(name: string, parentId?: string | null): Promise<Collection>
   deleteCollection(id: string): Promise<void>
   addLinkToCollection(collectionId: string, linkId: string): Promise<void>
   removeLinkFromCollection(collectionId: string, linkId: string): Promise<void>

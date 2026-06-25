@@ -33,7 +33,7 @@ interface AppState {
   createRelation: (input: CreateRelationInput) => Promise<void>
   deleteRelation: (id: string) => Promise<void>
 
-  createCollection: (name: string) => Promise<void>
+  createCollection: (name: string, parentId?: string | null) => Promise<void>
   deleteCollection: (id: string) => Promise<void>
   addLinkToCollection: (collectionId: string, linkId: string) => Promise<void>
   removeLinkFromCollection: (collectionId: string, linkId: string) => Promise<void>
@@ -134,8 +134,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().refresh()
   },
 
-  createCollection: async (name) => {
-    await window.api.createCollection(name)
+  createCollection: async (name, parentId = null) => {
+    await window.api.createCollection(name, parentId)
     await get().refresh()
   },
   deleteCollection: async (id) => {

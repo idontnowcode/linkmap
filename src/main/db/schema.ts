@@ -67,6 +67,7 @@ export const relations = sqliteTable(
 export const collections = sqliteTable('collections', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  parentId: text('parent_id'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull()
 })
 
@@ -133,6 +134,7 @@ export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS collections (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    parent_id TEXT REFERENCES collections(id) ON DELETE CASCADE,
     created_at INTEGER NOT NULL
   );
 
@@ -146,5 +148,6 @@ export const CREATE_TABLES_SQL = `
 // 기존 DB 업그레이드용 idempotent 마이그레이션 (각각 try/catch로 적용)
 export const MIGRATIONS: string[] = [
   `ALTER TABLE links ADD COLUMN kind TEXT NOT NULL DEFAULT 'web'`,
-  `ALTER TABLE links ADD COLUMN content TEXT`
+  `ALTER TABLE links ADD COLUMN content TEXT`,
+  `ALTER TABLE collections ADD COLUMN parent_id TEXT REFERENCES collections(id) ON DELETE CASCADE`
 ]

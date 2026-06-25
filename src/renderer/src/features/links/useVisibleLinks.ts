@@ -53,12 +53,22 @@ export function useVisibleLinks(): VisibleLinksResult {
         (l) => l.deletedAt == null && linkTagSet.has(`${l.id}:${activeView.id}`)
       )
     } else {
-      // collection — collectionLinks 멤버십으로 필터
+      // collection — 선택한 폴더 + 모든 하위 폴더의 멤버십을 합쳐 필터
       viewTitle = snapshot.collections.find((c) => c.id === activeView.id)?.name ?? '컬렉션'
+      const childrenOf = new Map<string, string[]>()
+      for (const c of snapshot.collections) {
+        if (c.parentId) childrenOf.set(c.parentId, [...(childrenOf.get(c.parentId) ?? []), c.id])
+      }
+      const colIds = new Set<string>()
+      const stack = [activeView.id]
+      while (stack.length) {
+        const id = stack.pop()!
+        if (colIds.has(id)) continue
+        colIds.add(id)
+        for (const ch of childrenOf.get(id) ?? []) stack.push(ch)
+      }
       const memberIds = new Set(
-        snapshot.collectionLinks
-          .filter((cl) => cl.collectionId === activeView.id)
-          .map((cl) => cl.linkId)
+        snapshot.collectionLinks.filter((cl) => colIds.has(cl.collectionId)).map((cl) => cl.linkId)
       )
       inView = snapshot.links.filter((l) => l.deletedAt == null && memberIds.has(l.id))
     }
