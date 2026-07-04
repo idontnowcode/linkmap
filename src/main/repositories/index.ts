@@ -28,9 +28,11 @@ function deriveDomain(url: string): string | null {
   }
 }
 
-/** web이면 호스트, file/folder이면 상위 디렉터리를 "위치"로 사용 */
+/** web이면 호스트, file/folder이면 상위 디렉터리, note면 null */
 function deriveLocation(kind: LinkKind, value: string): string | null {
-  return kind === 'web' ? deriveDomain(value) : dirname(value)
+  if (kind === 'web') return deriveDomain(value)
+  if (kind === 'file' || kind === 'folder') return value ? dirname(value) : null
+  return null
 }
 
 type LinkRow = typeof links.$inferSelect

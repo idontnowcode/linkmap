@@ -3,10 +3,12 @@ import type { FlowNode } from '../graphLayout'
 
 export function TagNode({ data, selected }: NodeProps<FlowNode>): JSX.Element {
   const color = data.color ?? '#3B82F6'
+  const handleCls =
+    '!h-2.5 !w-2.5 !border-2 !border-node !bg-white opacity-0 transition-opacity group-hover:opacity-100'
   return (
-    <div className="flex flex-col items-center">
-      <Handle type="target" position={Position.Top} className="!opacity-0" />
-      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
+    <div className="group flex flex-col items-center">
+      <Handle type="target" position={Position.Top} className={handleCls} />
+      <Handle type="source" position={Position.Bottom} className={handleCls} />
       <div
         className="grid h-[74px] w-[74px] place-items-center rounded-lg transition-transform"
         style={{

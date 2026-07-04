@@ -29,6 +29,7 @@ export function LinkFormDialog(): JSX.Element {
   const [favicon, setFavicon] = useState<string | null>(null)
   const [thumbnail, setThumbnail] = useState<string | null>(null)
   const [content, setContent] = useState<string | null>(null)
+  const [note, setNote] = useState('')
   const [tagIds, setTagIds] = useState<string[]>([])
   const [addingTag, setAddingTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
@@ -36,6 +37,7 @@ export function LinkFormDialog(): JSX.Element {
   const [saving, setSaving] = useState(false)
 
   const isWeb = kind === 'web'
+  const isNote = kind === 'note'
 
   // 폼 초기화
   useEffect(() => {
@@ -50,6 +52,7 @@ export function LinkFormDialog(): JSX.Element {
       setFavicon(editLink.favicon)
       setThumbnail(editLink.thumbnail)
       setContent(editLink.content)
+      setNote(editLink.note ?? '')
       setTagIds(editLink.tagIds)
     } else {
       setKind(prefill?.kind ?? 'web')
@@ -59,6 +62,7 @@ export function LinkFormDialog(): JSX.Element {
       setFavicon(prefill?.favicon ?? null)
       setThumbnail(prefill?.thumbnail ?? null)
       setContent(prefill?.content ?? null)
+      setNote(prefill?.note ?? '')
       setTagIds(prefill?.tagIds ?? [])
     }
   }, [open, editLink, prefill])
@@ -89,14 +93,19 @@ export function LinkFormDialog(): JSX.Element {
     }
   }
 
+  const invalid = isNote ? !title.trim() : !url || !title
+
   const submit = async (): Promise<void> => {
-    if (!url || !title) return
+    if (invalid) return
     setSaving(true)
     try {
+      const payload = isNote
+        ? { kind, url: '', title, note, tagIds }
+        : { kind, url, title, description, favicon, thumbnail, content, tagIds }
       if (editId) {
-        await updateLink(editId, { kind, url, title, description, favicon, thumbnail, content, tagIds })
+        await updateLink(editId, payload)
       } else {
-        const id = await createLink({ kind, url, title, description, favicon, thumbnail, content, tagIds })
+        const id = await createLink(payload)
         selectNode(id, 'link')
       }
       close()
@@ -128,68 +137,88 @@ export function LinkFormDialog(): JSX.Element {
     <Modal
       open={open}
       onClose={close}
-      title={editId ? '링크 편집' : '새 링크 추가'}
+      title={isNote ? (editId ? '메모 편집' : '새 메모') : editId ? '링크 편집' : '새 링크 추가'}
       width={480}
       footer={
         <>
           <Button variant="outline" onClick={close}>
             취소
           </Button>
-          <Button onClick={() => void submit()} disabled={!url || !title || saving}>
+          <Button onClick={() => void submit()} disabled={invalid || saving}>
             {saving ? '저장 중…' : editId ? '저장' : '추가'}
           </Button>
         </>
       }
     >
-      {/* 종류 선택 */}
-      <Field label="종류">
-        <div className="flex gap-1.5">
-          <KindTab active={isWeb} onClick={() => setKind('web')} icon={<Globe size={14} />}>
-            웹
-          </KindTab>
-          <KindTab active={kind === 'file'} onClick={() => void pick('file')} icon={<File size={14} />}>
-            파일 선택
-          </KindTab>
-          <KindTab
-            active={kind === 'folder'}
-            onClick={() => void pick('folder')}
-            icon={<Folder size={14} />}
-          >
-            폴더 선택
-          </KindTab>
-        </div>
-      </Field>
+      {/* 종류 선택 (메모는 URL이 없음) */}
+      {!isNote && (
+        <Field label="종류">
+          <div className="flex gap-1.5">
+            <KindTab active={isWeb} onClick={() => setKind('web')} icon={<Globe size={14} />}>
+              웹
+            </KindTab>
+            <KindTab active={kind === 'file'} onClick={() => void pick('file')} icon={<File size={14} />}>
+              파일 선택
+            </KindTab>
+            <KindTab
+              active={kind === 'folder'}
+              onClick={() => void pick('folder')}
+              icon={<Folder size={14} />}
+            >
+              폴더 선택
+            </KindTab>
+          </div>
+        </Field>
+      )}
 
-      <Field label={isWeb ? 'URL' : '경로'}>
-        <div className="flex gap-2">
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder={isWeb ? 'https://example.com' : 'C:\\... 또는 위에서 선택'}
-            readOnly={!isWeb}
-            autoFocus={isWeb}
-          />
-          {isWeb && (
-            <Button variant="outline" onClick={() => void autoFetch()} disabled={!url || fetching}>
-              <Sparkles size={14} />
-              {fetching ? '수집 중' : '자동 수집'}
-            </Button>
-          )}
-        </div>
-      </Field>
+      {!isNote && (
+        <Field label={isWeb ? 'URL' : '경로'}>
+          <div className="flex gap-2">
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder={isWeb ? 'https://example.com' : 'C:\\... 또는 위에서 선택'}
+              readOnly={!isWeb}
+              autoFocus={isWeb}
+            />
+            {isWeb && (
+              <Button variant="outline" onClick={() => void autoFetch()} disabled={!url || fetching}>
+                <Sparkles size={14} />
+                {fetching ? '수집 중' : '자동 수집'}
+              </Button>
+            )}
+          </div>
+        </Field>
+      )}
 
       <Field label="제목">
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="링크 제목" />
-      </Field>
-
-      <Field label="설명">
-        <Textarea
-          rows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="간단한 설명 (선택)"
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={isNote ? '메모 제목' : '링크 제목'}
+          autoFocus={isNote}
         />
       </Field>
+
+      {isNote ? (
+        <Field label="내용">
+          <Textarea
+            rows={5}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="메모 내용 (Markdown 지원)"
+          />
+        </Field>
+      ) : (
+        <Field label="설명">
+          <Textarea
+            rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="간단한 설명 (선택)"
+          />
+        </Field>
+      )}
 
       <Field label="태그">
         <div className="flex flex-wrap items-center gap-1.5">

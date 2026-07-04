@@ -50,7 +50,7 @@ export function NodeContextMenu({
           onClose()
         }}
       />
-      {isLink && (
+      {isLink && menu.linkKind !== 'note' && (
         <Item
           icon={<ExternalLink size={14} />}
           label={menu.linkKind === 'folder' ? '폴더 열기' : menu.linkKind === 'file' ? '파일 열기' : 'URL 열기'}

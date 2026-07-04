@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 export function RelationDialog(): JSX.Element {
   const sourceId = useUiStore((s) => s.relationSourceId)
   const sourceKind = useUiStore((s) => s.relationSourceKind)
+  const presetTargetId = useUiStore((s) => s.relationTargetId)
   const close = useUiStore((s) => s.closeRelationDialog)
   const snapshot = useAppStore((s) => s.snapshot)
   const createRelation = useAppStore((s) => s.createRelation)
@@ -23,12 +24,13 @@ export function RelationDialog(): JSX.Element {
 
   useEffect(() => {
     if (sourceId) {
-      setTargetId('')
+      // 그래프에서 드래그로 연결한 경우 대상이 미리 지정됨
+      setTargetId(presetTargetId ?? '')
       setType('related')
       setLabel('')
       setSearch('')
     }
-  }, [sourceId])
+  }, [sourceId, presetTargetId])
 
   const sourceTitle = useMemo(() => {
     if (!sourceId) return ''
@@ -39,6 +41,18 @@ export function RelationDialog(): JSX.Element {
       ''
     )
   }, [sourceId, snapshot])
+
+  const nameOf = (id: string): string =>
+    snapshot.links.find((l) => l.id === id)?.title ??
+    snapshot.tags.find((t) => t.id === id)?.name ??
+    snapshot.collections.find((c) => c.id === id)?.name ??
+    ''
+  const kindOf = (id: string): 'link' | 'tag' | 'collection' =>
+    snapshot.tags.some((t) => t.id === id)
+      ? 'tag'
+      : snapshot.collections.some((c) => c.id === id)
+        ? 'collection'
+        : 'link'
 
   const candidates = useMemo(
     () =>
@@ -57,7 +71,7 @@ export function RelationDialog(): JSX.Element {
         sourceId,
         sourceKind: sourceKind ?? 'link',
         targetId,
-        targetKind: 'link',
+        targetKind: kindOf(targetId),
         type,
         label: label.trim() || edgeStyle(type).label
       })
@@ -116,31 +130,40 @@ export function RelationDialog(): JSX.Element {
         <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="예: provides" />
       </Field>
 
-      <Field label="대상 링크">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="대상 링크 검색…"
-          className="mb-2"
-        />
-        <div className="max-h-44 overflow-y-auto rounded-md border border-line">
-          {candidates.map((l) => (
-            <button
-              key={l.id}
-              onClick={() => setTargetId(l.id)}
-              className={cn(
-                'flex w-full items-center gap-2 px-3 py-1.5 text-left text-body hover:bg-list',
-                targetId === l.id && 'bg-brand/10 font-medium text-brand'
+      <Field label="대상">
+        {presetTargetId ? (
+          <div className="rounded-md bg-list px-3 py-2 text-body">
+            <span className="text-ink-muted">도착: </span>
+            <span className="font-medium text-ink-strong">{nameOf(presetTargetId)}</span>
+          </div>
+        ) : (
+          <>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="대상 링크 검색…"
+              className="mb-2"
+            />
+            <div className="max-h-44 overflow-y-auto rounded-md border border-line">
+              {candidates.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => setTargetId(l.id)}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-1.5 text-left text-body hover:bg-list',
+                    targetId === l.id && 'bg-brand/10 font-medium text-brand'
+                  )}
+                >
+                  <span className="truncate">{l.title}</span>
+                  <span className="ml-auto truncate text-sm text-ink-muted">{l.domain}</span>
+                </button>
+              ))}
+              {candidates.length === 0 && (
+                <p className="px-3 py-3 text-center text-sm text-ink-muted">대상이 없습니다</p>
               )}
-            >
-              <span className="truncate">{l.title}</span>
-              <span className="ml-auto truncate text-sm text-ink-muted">{l.domain}</span>
-            </button>
-          ))}
-          {candidates.length === 0 && (
-            <p className="px-3 py-3 text-center text-sm text-ink-muted">대상이 없습니다</p>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </Field>
     </Modal>
   )

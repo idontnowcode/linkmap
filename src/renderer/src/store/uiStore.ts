@@ -28,6 +28,7 @@ interface UiState {
   tagFormOpen: boolean
   relationSourceId: string | null
   relationSourceKind: NodeKind | null
+  relationTargetId: string | null
   collectionFormOpen: boolean
   collectionFormParentId: string | null
   collectionPickerLinkId: string | null
@@ -44,7 +45,7 @@ interface UiState {
   closeLinkForm: () => void
   openTagForm: () => void
   closeTagForm: () => void
-  openRelationDialog: (sourceId: string, sourceKind: NodeKind) => void
+  openRelationDialog: (sourceId: string, sourceKind: NodeKind, targetId?: string | null) => void
   closeRelationDialog: () => void
   openCollectionForm: (parentId?: string | null) => void
   closeCollectionForm: () => void
@@ -71,6 +72,7 @@ export const useUiStore = create<UiState>((set) => ({
   tagFormOpen: false,
   relationSourceId: null,
   relationSourceKind: null,
+  relationTargetId: null,
   collectionFormOpen: false,
   collectionFormParentId: null,
   collectionPickerLinkId: null,
@@ -88,9 +90,10 @@ export const useUiStore = create<UiState>((set) => ({
   closeLinkForm: () => set({ linkFormOpen: false, linkFormPrefill: null, linkFormEditId: null }),
   openTagForm: () => set({ tagFormOpen: true }),
   closeTagForm: () => set({ tagFormOpen: false }),
-  openRelationDialog: (sourceId, sourceKind) =>
-    set({ relationSourceId: sourceId, relationSourceKind: sourceKind }),
-  closeRelationDialog: () => set({ relationSourceId: null, relationSourceKind: null }),
+  openRelationDialog: (sourceId, sourceKind, targetId = null) =>
+    set({ relationSourceId: sourceId, relationSourceKind: sourceKind, relationTargetId: targetId }),
+  closeRelationDialog: () =>
+    set({ relationSourceId: null, relationSourceKind: null, relationTargetId: null }),
   openCollectionForm: (parentId = null) =>
     set({ collectionFormOpen: true, collectionFormParentId: parentId }),
   closeCollectionForm: () => set({ collectionFormOpen: false, collectionFormParentId: null }),

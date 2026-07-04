@@ -4,10 +4,12 @@ import type { FlowNode } from '../graphLayout'
 const HEX = 'polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0% 50%)'
 
 export function CollectionNode({ data, selected }: NodeProps<FlowNode>): JSX.Element {
+  const handleCls =
+    '!h-2.5 !w-2.5 !border-2 !border-node !bg-white opacity-0 transition-opacity group-hover:opacity-100'
   return (
-    <div className="flex flex-col items-center">
-      <Handle type="target" position={Position.Top} className="!opacity-0" />
-      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
+    <div className="group flex flex-col items-center">
+      <Handle type="target" position={Position.Top} className={handleCls} />
+      <Handle type="source" position={Position.Bottom} className={handleCls} />
       <div
         className="grid h-[80px] w-[88px] place-items-center bg-white"
         style={{

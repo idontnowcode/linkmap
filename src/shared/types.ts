@@ -2,8 +2,8 @@
 
 export type NodeKind = 'link' | 'tag' | 'collection'
 
-/** 링크 대상 종류: 웹 URL / 로컬 파일 / 로컬 폴더 */
-export type LinkKind = 'web' | 'file' | 'folder'
+/** 링크 대상 종류: 웹 URL / 로컬 파일 / 로컬 폴더 / 단순 메모(URL 없음) */
+export type LinkKind = 'web' | 'file' | 'folder' | 'note'
 
 export type RelationType =
   | 'related'

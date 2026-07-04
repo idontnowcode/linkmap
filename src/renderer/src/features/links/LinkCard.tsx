@@ -1,4 +1,4 @@
-import { File, Folder, Star } from 'lucide-react'
+import { File, Folder, StickyNote, Star } from 'lucide-react'
 import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
@@ -121,9 +121,9 @@ export function LinkCard({
 }
 
 export function Favicon({ link, size = 18 }: { link: LinkWithTags; size?: number }): JSX.Element {
-  if (link.kind === 'file' || link.kind === 'folder') {
-    const Icon = link.kind === 'folder' ? Folder : File
-    const tint = link.kind === 'folder' ? '#F97316' : '#14B8A6'
+  if (link.kind !== 'web') {
+    const Icon = link.kind === 'folder' ? Folder : link.kind === 'note' ? StickyNote : File
+    const tint = link.kind === 'folder' ? '#F97316' : link.kind === 'note' ? '#EAB308' : '#14B8A6'
     return (
       <span
         className="grid shrink-0 place-items-center rounded-sm"

@@ -38,6 +38,12 @@ export function SettingsDialog(): JSX.Element {
         checked={s.showCollections}
         onChange={s.setShowCollections}
       />
+      <Row
+        label="검색/필터 시 비매칭 항목 숨기기"
+        desc="끄면 흐리게 표시(강조 모드), 켜면 완전히 숨김"
+        checked={s.hideUnmatched}
+        onChange={s.setHideUnmatched}
+      />
     </Modal>
   )
 }

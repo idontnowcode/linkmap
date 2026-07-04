@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   MarkerType,
   MiniMap,
@@ -10,9 +11,10 @@ import {
   useNodesState,
   useReactFlow,
   type Node,
-  type NodeMouseHandler
+  type NodeMouseHandler,
+  type OnConnect
 } from '@xyflow/react'
-import type { LinkKind } from '@shared/types'
+import type { LinkKind, NodeKind } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { useSettingsStore } from '@/store/settingsStore'
@@ -34,9 +36,11 @@ export function GraphCanvas(): JSX.Element {
   const layout = useUiStore((s) => s.layout)
   const showTags = useSettingsStore((s) => s.showTags)
   const showCollections = useSettingsStore((s) => s.showCollections)
+  const hideUnmatched = useSettingsStore((s) => s.hideUnmatched)
   const searchQuery = useUiStore((s) => s.searchQuery)
   const selectedNodeId = useUiStore((s) => s.selectedNodeId)
   const selectNode = useUiStore((s) => s.selectNode)
+  const openRelationDialog = useUiStore((s) => s.openRelationDialog)
   const focusNodeId = useUiStore((s) => s.focusNodeId)
   const focusNonce = useUiStore((s) => s.focusNonce)
 
@@ -87,12 +91,16 @@ export function GraphCanvas(): JSX.Element {
 
   const styledNodes = useMemo(
     () =>
-      nodes.map((n) => ({
-        ...n,
-        selected: n.id === selectedNodeId,
-        style: { opacity: dimmedIds && !dimmedIds.has(n.id) ? 0.2 : 1 }
-      })),
-    [nodes, selectedNodeId, dimmedIds]
+      nodes.map((n) => {
+        const unmatched = !!dimmedIds && !dimmedIds.has(n.id)
+        return {
+          ...n,
+          selected: n.id === selectedNodeId,
+          hidden: unmatched && hideUnmatched,
+          style: { opacity: unmatched && !hideUnmatched ? 0.2 : 1 }
+        }
+      }),
+    [nodes, selectedNodeId, dimmedIds, hideUnmatched]
   )
 
   // LinkCard 클릭 → 노드 센터링
@@ -136,6 +144,17 @@ export function GraphCanvas(): JSX.Element {
     positions.current.set(node.id, node.position)
   }, [])
 
+  // 마우스로 노드→노드 드래그해서 관계 생성 (타입/라벨은 다이얼로그에서 선택)
+  const onConnect: OnConnect = useCallback(
+    (c) => {
+      if (!c.source || !c.target || c.source === c.target) return
+      const src = nodes.find((n) => n.id === c.source)
+      const kind = ((src?.data.kind as NodeKind) ?? 'link') as NodeKind
+      openRelationDialog(c.source, kind, c.target)
+    },
+    [nodes, openRelationDialog]
+  )
+
   return (
     <div className="relative h-full w-full">
       <ReactFlow
@@ -149,6 +168,8 @@ export function GraphCanvas(): JSX.Element {
         onNodeDoubleClick={onNodeDoubleClick}
         onNodeContextMenu={onNodeContextMenu}
         onNodeDragStop={onNodeDragStop}
+        onConnect={onConnect}
+        connectionMode={ConnectionMode.Loose}
         onPaneClick={() => selectNode(null)}
         defaultEdgeOptions={{
           type: 'relation',

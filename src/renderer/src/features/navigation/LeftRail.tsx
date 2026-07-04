@@ -9,6 +9,7 @@ import {
   Settings,
   Share2,
   Star,
+  StickyNote,
   Trash2
 } from 'lucide-react'
 import type { Collection } from '@shared/types'
@@ -197,9 +198,14 @@ export function LeftRail(): JSX.Element {
         <Button block onClick={() => openLinkForm()}>
           <Plus size={16} /> 새 링크 추가
         </Button>
-        <Button block variant="secondary" onClick={openTagForm}>
-          <Plus size={16} /> 새 태그 추가
-        </Button>
+        <div className="flex gap-2">
+          <Button block variant="secondary" onClick={() => openLinkForm({ kind: 'note' })}>
+            <StickyNote size={15} /> 새 메모
+          </Button>
+          <Button block variant="secondary" onClick={openTagForm}>
+            <Plus size={15} /> 새 태그
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-4">

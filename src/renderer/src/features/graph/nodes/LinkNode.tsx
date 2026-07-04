@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
-import { File, Folder } from 'lucide-react'
+import { File, Folder, StickyNote } from 'lucide-react'
 import type { FlowNode } from '../graphLayout'
 import { initials } from '@/lib/utils'
 
@@ -7,10 +7,38 @@ export function LinkNode({ data, selected }: NodeProps<FlowNode>): JSX.Element {
   const size = Math.min(76, 48 + data.degree * 6)
   const isFile = data.linkKind === 'file'
   const isFolder = data.linkKind === 'folder'
+  const isNote = data.linkKind === 'note'
+  const handleCls =
+    '!h-2.5 !w-2.5 !border-2 !border-node !bg-white opacity-0 transition-opacity group-hover:opacity-100'
+
+  // 메모 노드: 노란 포스트잇 스타일
+  if (isNote) {
+    return (
+      <div className="group flex flex-col items-center" style={{ width: 96 }}>
+        <Handle type="target" position={Position.Top} className={handleCls} />
+        <Handle type="source" position={Position.Bottom} className={handleCls} />
+        <div
+          className="relative flex w-[96px] items-start gap-1 rounded-md p-2 text-left"
+          style={{
+            minHeight: 60,
+            background: '#FEF3C7',
+            border: `1.5px solid ${selected ? '#CA8A04' : '#EAB308'}`,
+            boxShadow: selected ? '0 0 0 5px rgba(234,179,8,.2)' : '0 1px 2px rgba(15,23,42,.06)'
+          }}
+        >
+          <StickyNote size={12} className="mt-0.5 shrink-0" style={{ color: '#A16207' }} />
+          <span className="line-clamp-3 text-[10px] font-medium leading-tight text-amber-900">
+            {data.label}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col items-center" style={{ width: size }}>
-      <Handle type="target" position={Position.Top} className="!opacity-0" />
-      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
+    <div className="group flex flex-col items-center" style={{ width: size }}>
+      <Handle type="target" position={Position.Top} className={handleCls} />
+      <Handle type="source" position={Position.Bottom} className={handleCls} />
       <div
         className="grid place-items-center rounded-full bg-white transition-transform"
         style={{

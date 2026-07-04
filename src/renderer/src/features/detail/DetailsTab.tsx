@@ -27,20 +27,22 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
   return (
     <div className="px-4 py-4 text-body">
       <Row label="제목" value={link.title} />
-      <div className="mb-3">
-        <Label>{link.kind === 'web' ? 'URL' : '경로'}</Label>
-        <div className="flex items-start gap-1.5">
-          <button
-            onClick={() => openTarget(link.kind, link.url)}
-            className="inline-flex min-w-0 flex-1 items-center gap-1 text-left text-brand hover:underline"
-            title={link.kind === 'web' ? '브라우저로 열기' : 'OS 기본 앱으로 열기'}
-          >
-            <span className="break-all">{link.url}</span>
-            <ExternalLink size={13} className="shrink-0" />
-          </button>
-          <CopyButton text={link.url} />
+      {link.kind !== 'note' && (
+        <div className="mb-3">
+          <Label>{link.kind === 'web' ? 'URL' : '경로'}</Label>
+          <div className="flex items-start gap-1.5">
+            <button
+              onClick={() => openTarget(link.kind, link.url)}
+              className="inline-flex min-w-0 flex-1 items-center gap-1 text-left text-brand hover:underline"
+              title={link.kind === 'web' ? '브라우저로 열기' : 'OS 기본 앱으로 열기'}
+            >
+              <span className="break-all">{link.url}</span>
+              <ExternalLink size={13} className="shrink-0" />
+            </button>
+            <CopyButton text={link.url} />
+          </div>
         </div>
-      </div>
+      )}
       {link.description && <Row label="설명" value={link.description} />}
 
       {/* Tags */}
@@ -80,7 +82,9 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
         </div>
       </div>
 
-      <Row label={link.kind === 'web' ? '도메인' : '위치'} value={link.domain ?? '—'} />
+      {link.kind !== 'note' && (
+        <Row label={link.kind === 'web' ? '도메인' : '위치'} value={link.domain ?? '—'} />
+      )}
       <Row label="생성일" value={formatDate(link.createdAt)} />
       <Row label="수정일" value={formatDate(link.updatedAt)} />
 
