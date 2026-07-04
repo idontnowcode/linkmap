@@ -73,9 +73,9 @@ export function useVisibleLinks(): VisibleLinksResult {
       inView = snapshot.links.filter((l) => l.deletedAt == null && memberIds.has(l.id))
     }
 
-    // 2) 검색 필터
-    const q = parseSearch(searchQuery)
-    const links = inView.filter((l) => matchLink(l, q, tagsById))
+    // 2) 검색 필터 (콤마 = OR)
+    const queries = parseSearch(searchQuery)
+    const links = inView.filter((l) => matchLink(l, queries, tagsById))
     const matchedIds = new Set(links.map((l) => l.id))
 
     return { links, matchedIds, tagsById, viewTitle }

@@ -18,7 +18,7 @@ import type { LinkKind, NodeKind } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { useSettingsStore } from '@/store/settingsStore'
-import { parseSearch, matchLink, isEmptyQuery } from '@/lib/search'
+import { parseSearch, matchLink, isEmpty } from '@/lib/search'
 import { openTarget } from '@/lib/openLink'
 import { buildGraph, type FlowEdge, type FlowNode } from './graphLayout'
 import { LinkNode } from './nodes/LinkNode'
@@ -72,19 +72,56 @@ export function GraphCanvas(): JSX.Element {
     }
   }, [snapshot, layout, showTags, showCollections, setNodes, setEdges, fitView])
 
-  // 검색 매칭 노드 계산 (dim 처리용)
+  // 검색 매칭 노드 계산 (강조/숨김용).
+  // 매칭 링크 + 그 링크의 태그·컬렉션(+상위) + 이름이 매칭된 태그와 그 태그의 모든 링크까지 유지.
   const dimmedIds = useMemo(() => {
-    const q = parseSearch(searchQuery)
-    if (isEmptyQuery(q)) return null
+    const queries = parseSearch(searchQuery)
+    if (isEmpty(queries)) return null
     const tagsById = new Map(snapshot.tags.map((t) => [t.id, t]))
-    const matched = new Set<string>()
-    for (const l of snapshot.links) {
-      if (l.deletedAt == null && matchLink(l, q, tagsById)) matched.add(l.id)
+    const colById = new Map(snapshot.collections.map((c) => [c.id, c]))
+
+    const tagsOfLink = new Map<string, string[]>()
+    const linksOfTag = new Map<string, string[]>()
+    for (const lt of snapshot.linkTags) {
+      tagsOfLink.set(lt.linkId, [...(tagsOfLink.get(lt.linkId) ?? []), lt.tagId])
+      linksOfTag.set(lt.tagId, [...(linksOfTag.get(lt.tagId) ?? []), lt.linkId])
     }
-    // 텍스트가 태그/컬렉션 이름과 일치하면 그 노드도 강조
+    const colsOfLink = new Map<string, string[]>()
+    for (const cl of snapshot.collectionLinks) {
+      colsOfLink.set(cl.linkId, [...(colsOfLink.get(cl.linkId) ?? []), cl.collectionId])
+    }
+
+    const matched = new Set<string>()
+    // 1) 쿼리에 매칭되는 링크
+    for (const l of snapshot.links) {
+      if (l.deletedAt == null && matchLink(l, queries, tagsById)) matched.add(l.id)
+    }
+    // 2) 이름이 매칭된 태그 → 태그 + 그 태그를 가진 모든 링크
     for (const t of snapshot.tags) {
-      if (q.text && t.name.toLowerCase().includes(q.text)) matched.add(t.id)
-      if (q.tagNames.some((tn) => t.name.toLowerCase().includes(tn))) matched.add(t.id)
+      const name = t.name.toLowerCase()
+      const hit = queries.some(
+        (q) => (q.text && name.includes(q.text)) || q.tagNames.some((tn) => name.includes(tn))
+      )
+      if (hit) {
+        matched.add(t.id)
+        for (const lid of linksOfTag.get(t.id) ?? []) matched.add(lid)
+      }
+    }
+    // 3) 이름이 매칭된 컬렉션도 유지
+    for (const c of snapshot.collections) {
+      if (queries.some((q) => q.text && c.name.toLowerCase().includes(q.text))) matched.add(c.id)
+    }
+    // 4) 매칭된 링크들의 태그·컬렉션(+상위 폴더)도 함께 유지 → 그래프가 끊기지 않게
+    for (const id of [...matched]) {
+      for (const tid of tagsOfLink.get(id) ?? []) matched.add(tid)
+      for (const cid of colsOfLink.get(id) ?? []) {
+        matched.add(cid)
+        let cur = colById.get(cid)
+        while (cur?.parentId) {
+          matched.add(cur.parentId)
+          cur = colById.get(cur.parentId)
+        }
+      }
     }
     return matched
   }, [searchQuery, snapshot])

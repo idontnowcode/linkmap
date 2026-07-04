@@ -3,7 +3,7 @@ import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { cn, initials } from '@/lib/utils'
-import { contentSnippet, parseSearch } from '@/lib/search'
+import { contentSnippet, parseSearch, queryTexts } from '@/lib/search'
 
 /** 스니펫에서 검색어를 강조 표시 */
 function highlight(text: string, term: string): React.ReactNode {
@@ -54,9 +54,21 @@ export function LinkCard({
   const selected = selectedNodeId === link.id
 
   // 전문검색: 본문에서만 매칭됐을 때 스니펫 표시
-  const q = parseSearch(searchQuery)
-  const inMeta = !!q.text && `${link.title} ${link.domain ?? ''} ${link.url}`.toLowerCase().includes(q.text)
-  const snip = q.text && !inMeta ? contentSnippet(link.content, q.text) : null
+  const texts = queryTexts(parseSearch(searchQuery))
+  const meta = `${link.title} ${link.domain ?? ''} ${link.url}`.toLowerCase()
+  const inMeta = texts.some((t) => meta.includes(t))
+  let snip: string | null = null
+  let snipTerm = ''
+  if (!inMeta) {
+    for (const t of texts) {
+      const s = contentSnippet(link.content, t)
+      if (s) {
+        snip = s
+        snipTerm = t
+        break
+      }
+    }
+  }
 
   return (
     <div
@@ -99,7 +111,7 @@ export function LinkCard({
             <span className="mr-1 rounded-sm bg-amber-100 px-1 text-[10px] font-medium text-amber-700">
               본문
             </span>
-            {highlight(snip, q.text)}
+            {highlight(snip, snipTerm)}
           </p>
         )}
       </div>

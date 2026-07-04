@@ -1,7 +1,16 @@
 import { useState } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
-import { ChevronDown, HelpCircle, LayoutGrid, Search, SlidersHorizontal } from 'lucide-react'
+import {
+  ChevronDown,
+  HelpCircle,
+  LayoutGrid,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  X
+} from 'lucide-react'
 import { useUiStore, type LayoutMode } from '@/store/uiStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { GraphCanvas } from './GraphCanvas'
 import { cn } from '@/lib/utils'
 
@@ -16,7 +25,18 @@ export function GraphPanel(): JSX.Element {
   const setSearch = useUiStore((s) => s.setSearch)
   const layout = useUiStore((s) => s.layout)
   const setLayout = useUiStore((s) => s.setLayout)
+  const savedFilters = useSettingsStore((s) => s.savedFilters)
+  const addSavedFilter = useSettingsStore((s) => s.addSavedFilter)
+  const removeSavedFilter = useSettingsStore((s) => s.removeSavedFilter)
   const [layoutOpen, setLayoutOpen] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
+
+  const saveCurrent = (): void => {
+    const q = searchQuery.trim()
+    if (!q) return
+    const name = prompt('필터 이름을 입력하세요', q.slice(0, 24))
+    if (name && name.trim()) addSavedFilter(name.trim(), q)
+  }
 
   return (
     <section className="flex h-full flex-col bg-canvas">
@@ -27,12 +47,68 @@ export function GraphPanel(): JSX.Element {
           <input
             value={searchQuery}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="링크, 태그, 메모 검색 (예: openai, tag:AI)"
+            placeholder="검색 · 여러 조건은 ,로 구분(OR) 예: tag:MCU, tag:RTOS"
             className="h-full w-full bg-transparent text-body text-ink-strong outline-none placeholder:text-ink-muted"
           />
+          {searchQuery && (
+            <button onClick={() => setSearch('')} className="text-ink-muted hover:text-ink-strong" title="지우기">
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        <ToolbarButton icon={<SlidersHorizontal size={15} />} label="필터" />
+        <div className="relative">
+          <ToolbarButton
+            icon={<SlidersHorizontal size={15} />}
+            label="필터"
+            chevron
+            onClick={() => setFilterOpen((v) => !v)}
+          />
+          {filterOpen && (
+            <div
+              className="absolute right-0 top-10 z-20 w-64 rounded-md border border-line bg-white py-1 shadow-pop"
+              onMouseLeave={() => setFilterOpen(false)}
+            >
+              <div className="px-3 py-1 text-label uppercase text-ink-muted">저장된 필터</div>
+              {savedFilters.length === 0 && (
+                <p className="px-3 py-2 text-sm text-ink-muted">저장된 필터가 없습니다</p>
+              )}
+              {savedFilters.map((f) => (
+                <div key={f.id} className="group/f flex items-center hover:bg-list">
+                  <button
+                    onClick={() => {
+                      setSearch(f.query)
+                      setFilterOpen(false)
+                    }}
+                    className="min-w-0 flex-1 px-3 py-1.5 text-left"
+                  >
+                    <div className="truncate text-body text-ink-strong">{f.name}</div>
+                    <div className="truncate text-sm text-ink-muted">{f.query}</div>
+                  </button>
+                  <button
+                    onClick={() => removeSavedFilter(f.id)}
+                    className="px-2 text-ink-muted opacity-0 hover:text-red-600 group-hover/f:opacity-100"
+                    title="삭제"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+              <div className="mt-1 border-t border-line pt-1">
+                <button
+                  onClick={() => {
+                    saveCurrent()
+                    setFilterOpen(false)
+                  }}
+                  disabled={!searchQuery.trim()}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-body text-brand hover:bg-list disabled:opacity-40"
+                >
+                  <Plus size={14} /> 현재 검색을 필터로 저장
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="relative">
           <ToolbarButton

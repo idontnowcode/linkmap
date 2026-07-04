@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export interface SavedFilter {
+  id: string
+  name: string
+  query: string
+}
+
 interface SettingsState {
   /** AI 관계 추천 ON/OFF (기본 OFF) */
   aiSuggest: boolean
@@ -10,10 +16,14 @@ interface SettingsState {
   showCollections: boolean
   /** 검색/필터 시 비매칭 노드를 흐리게(false) 대신 완전히 숨김(true) */
   hideUnmatched: boolean
+  /** 저장된 필터(검색어) 프리셋 */
+  savedFilters: SavedFilter[]
   setAiSuggest: (v: boolean) => void
   setShowTags: (v: boolean) => void
   setShowCollections: (v: boolean) => void
   setHideUnmatched: (v: boolean) => void
+  addSavedFilter: (name: string, query: string) => void
+  removeSavedFilter: (id: string) => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -23,10 +33,17 @@ export const useSettingsStore = create<SettingsState>()(
       showTags: true,
       showCollections: true,
       hideUnmatched: false,
+      savedFilters: [],
       setAiSuggest: (v) => set({ aiSuggest: v }),
       setShowTags: (v) => set({ showTags: v }),
       setShowCollections: (v) => set({ showCollections: v }),
-      setHideUnmatched: (v) => set({ hideUnmatched: v })
+      setHideUnmatched: (v) => set({ hideUnmatched: v }),
+      addSavedFilter: (name, query) =>
+        set((s) => ({
+          savedFilters: [...s.savedFilters, { id: crypto.randomUUID(), name, query }]
+        })),
+      removeSavedFilter: (id) =>
+        set((s) => ({ savedFilters: s.savedFilters.filter((f) => f.id !== id) }))
     }),
     { name: 'linkmap-settings' }
   )
