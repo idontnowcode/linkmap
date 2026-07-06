@@ -47,7 +47,7 @@ export function GraphPanel(): JSX.Element {
           <input
             value={searchQuery}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="검색 · 여러 조건은 ,로 구분(OR) 예: tag:MCU, tag:RTOS"
+            placeholder="검색 · 공백=모두 포함(AND), ,=OR · 예: MCU datasheet / tag:MCU, tag:RTOS"
             className="h-full w-full bg-transparent text-body text-ink-strong outline-none placeholder:text-ink-muted"
           />
           {searchQuery && (

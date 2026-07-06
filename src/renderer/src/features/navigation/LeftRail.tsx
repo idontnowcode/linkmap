@@ -43,6 +43,8 @@ export function LeftRail(): JSX.Element {
 
   const [menu, setMenu] = useState<RailMenu | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [tagsCollapsed, setTagsCollapsed] = useState(false)
+  const [colsCollapsed, setColsCollapsed] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<string | 'root' | null>(null)
 
@@ -187,7 +189,7 @@ export function LeftRail(): JSX.Element {
   ] as const
 
   return (
-    <aside className="flex h-full flex-col bg-rail text-ink-dark">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden bg-rail text-ink-dark">
       {/* Brand */}
       <div className="flex items-center gap-2 px-4 pb-3 pt-4">
         <Share2 size={20} className="text-brand" />
@@ -232,83 +234,101 @@ export function LeftRail(): JSX.Element {
           })}
         </nav>
 
-        {/* Tags */}
-        <SectionLabel label="태그" onAdd={openTagForm} />
-        <div className="mb-4 space-y-0.5">
-          {tags.map((t) => {
-            const active = sameView(activeView, { kind: 'tag', id: t.id })
-            return (
-              <button
-                key={t.id}
-                onClick={() => setView({ kind: 'tag', id: t.id })}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setMenu({ x: e.clientX, y: e.clientY, kind: 'tag', id: t.id, name: t.name })
-                }}
+        {/* Collections (트리) — 폴더가 먼저 */}
+        <SectionLabel
+          label="폴더(컬렉션)"
+          onAdd={() => openCollectionForm()}
+          collapsed={colsCollapsed}
+          onToggle={() => setColsCollapsed((v) => !v)}
+        />
+        {!colsCollapsed && (
+          <>
+            <div className="space-y-0.5">
+              {(childrenOf.get(null) ?? []).map((c) => renderCollection(c, 0))}
+              {collections.length === 0 && <Empty>컬렉션 없음</Empty>}
+            </div>
+            {dragId && (
+              <div
                 onDragOver={(e) => {
-                  if (!e.dataTransfer.types.includes('application/x-linkmap-link')) return
                   e.preventDefault()
                   e.stopPropagation()
-                  e.dataTransfer.dropEffect = 'copy'
-                  if (dropTarget !== t.id) setDropTarget(t.id)
+                  e.dataTransfer.dropEffect = 'move'
+                  if (dropTarget !== 'root') setDropTarget('root')
                 }}
                 onDrop={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  const linkId = e.dataTransfer.getData('application/x-linkmap-link')
-                  if (linkId) void addTagToLink(linkId, t.id)
+                  void moveCollection(dragId, null)
+                  setDragId(null)
                   setDropTarget(null)
                 }}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-body',
-                  dropTarget === t.id
-                    ? 'bg-brand/30 ring-1 ring-brand'
-                    : active
-                      ? 'bg-rail-active text-white'
-                      : 'text-ink-dark hover:bg-rail-hover'
+                  'mt-1.5 rounded-md border border-dashed px-2.5 py-2 text-center text-sm transition-colors',
+                  dropTarget === 'root'
+                    ? 'border-brand bg-brand/20 text-white'
+                    : 'border-white/15 text-ink-dark-muted'
                 )}
               >
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
-                <span className="flex-1 truncate text-left">{t.name}</span>
-                <span className="text-sm text-ink-dark-muted">{counts.byTag[t.id] ?? 0}</span>
-              </button>
-            )
-          })}
-          {tags.length === 0 && <Empty>태그 없음</Empty>}
-        </div>
-
-        {/* Collections (트리) */}
-        <SectionLabel label="폴더(컬렉션)" onAdd={() => openCollectionForm()} />
-        <div className="space-y-0.5">
-          {(childrenOf.get(null) ?? []).map((c) => renderCollection(c, 0))}
-          {collections.length === 0 && <Empty>컬렉션 없음</Empty>}
-        </div>
-        {dragId && (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              e.dataTransfer.dropEffect = 'move'
-              if (dropTarget !== 'root') setDropTarget('root')
-            }}
-            onDrop={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              void moveCollection(dragId, null)
-              setDragId(null)
-              setDropTarget(null)
-            }}
-            className={cn(
-              'mt-1.5 rounded-md border border-dashed px-2.5 py-2 text-center text-sm transition-colors',
-              dropTarget === 'root'
-                ? 'border-brand bg-brand/20 text-white'
-                : 'border-white/15 text-ink-dark-muted'
+                ↥ 여기에 놓으면 최상위로
+              </div>
             )}
-          >
-            ↥ 여기에 놓으면 최상위로
-          </div>
+          </>
         )}
+
+        {/* Tags — 폴더 아래로 */}
+        <div className="mt-4">
+          <SectionLabel
+            label="태그"
+            onAdd={openTagForm}
+            collapsed={tagsCollapsed}
+            onToggle={() => setTagsCollapsed((v) => !v)}
+          />
+          {!tagsCollapsed && (
+            <div className="space-y-0.5">
+              {tags.map((t) => {
+                const active = sameView(activeView, { kind: 'tag', id: t.id })
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setView({ kind: 'tag', id: t.id })}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setMenu({ x: e.clientX, y: e.clientY, kind: 'tag', id: t.id, name: t.name })
+                    }}
+                    onDragOver={(e) => {
+                      if (!e.dataTransfer.types.includes('application/x-linkmap-link')) return
+                      e.preventDefault()
+                      e.stopPropagation()
+                      e.dataTransfer.dropEffect = 'copy'
+                      if (dropTarget !== t.id) setDropTarget(t.id)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const linkId = e.dataTransfer.getData('application/x-linkmap-link')
+                      if (linkId) void addTagToLink(linkId, t.id)
+                      setDropTarget(null)
+                    }}
+                    className={cn(
+                      'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-body',
+                      dropTarget === t.id
+                        ? 'bg-brand/30 ring-1 ring-brand'
+                        : active
+                          ? 'bg-rail-active text-white'
+                          : 'text-ink-dark hover:bg-rail-hover'
+                    )}
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
+                    <span className="flex-1 truncate text-left">{t.name}</span>
+                    <span className="text-sm text-ink-dark-muted">{counts.byTag[t.id] ?? 0}</span>
+                  </button>
+                )
+              })}
+              {tags.length === 0 && <Empty>태그 없음</Empty>}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Footer */}
@@ -354,10 +374,28 @@ export function LeftRail(): JSX.Element {
   )
 }
 
-function SectionLabel({ label, onAdd }: { label: string; onAdd?: () => void }): JSX.Element {
+function SectionLabel({
+  label,
+  onAdd,
+  collapsed,
+  onToggle
+}: {
+  label: string
+  onAdd?: () => void
+  collapsed?: boolean
+  onToggle?: () => void
+}): JSX.Element {
   return (
     <div className="flex items-center justify-between px-2.5 pb-1 pt-1">
-      <span className="text-label uppercase text-ink-dark-muted">{label}</span>
+      <button
+        onClick={onToggle}
+        disabled={!onToggle}
+        className="flex items-center gap-1 text-label uppercase text-ink-dark-muted hover:text-white disabled:hover:text-ink-dark-muted"
+      >
+        {onToggle &&
+          (collapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />)}
+        {label}
+      </button>
       {onAdd && (
         <button onClick={onAdd} className="text-ink-dark-muted hover:text-white">
           <Plus size={14} />

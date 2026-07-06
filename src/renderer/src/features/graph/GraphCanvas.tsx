@@ -100,7 +100,8 @@ export function GraphCanvas(): JSX.Element {
     for (const t of snapshot.tags) {
       const name = t.name.toLowerCase()
       const hit = queries.some(
-        (q) => (q.text && name.includes(q.text)) || q.tagNames.some((tn) => name.includes(tn))
+        (q) =>
+          q.texts.some((tx) => name.includes(tx)) || q.tagNames.some((tn) => name.includes(tn))
       )
       if (hit) {
         matched.add(t.id)
@@ -109,7 +110,8 @@ export function GraphCanvas(): JSX.Element {
     }
     // 3) 이름이 매칭된 컬렉션도 유지
     for (const c of snapshot.collections) {
-      if (queries.some((q) => q.text && c.name.toLowerCase().includes(q.text))) matched.add(c.id)
+      const name = c.name.toLowerCase()
+      if (queries.some((q) => q.texts.some((tx) => name.includes(tx)))) matched.add(c.id)
     }
     // 4) 매칭된 링크들의 태그·컬렉션(+상위 폴더)도 함께 유지 → 그래프가 끊기지 않게
     for (const id of [...matched]) {

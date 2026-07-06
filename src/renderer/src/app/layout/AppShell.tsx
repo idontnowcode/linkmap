@@ -12,9 +12,10 @@ export function AppShell(): JSX.Element {
 
   return (
     <div
-      className="grid h-full w-full overflow-hidden"
+      className="grid h-screen w-full overflow-hidden"
       style={{
-        gridTemplateColumns: `${railWidth}px 5px ${listWidth}px 5px minmax(0,1fr) 320px`
+        gridTemplateColumns: `${railWidth}px 5px ${listWidth}px 5px minmax(0,1fr) 320px`,
+        gridTemplateRows: 'minmax(0, 1fr)'
       }}
     >
       <LeftRail />

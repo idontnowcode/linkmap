@@ -154,7 +154,7 @@ export function LinkListColumn(): JSX.Element {
   }
 
   return (
-    <section className="flex h-full flex-col border-r border-line bg-white">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden border-r border-line bg-white">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pb-2 pt-4">
         <div>
