@@ -34,6 +34,7 @@ interface LinkCardProps {
   link: LinkWithTags
   selectMode?: boolean
   checked?: boolean
+  selectedIds?: string[]
   onToggleSelect?: (id: string) => void
   onModClick?: (e: React.MouseEvent, id: string) => void
   onContextMenu?: (e: React.MouseEvent, link: LinkWithTags) => void
@@ -43,6 +44,7 @@ export function LinkCard({
   link,
   selectMode = false,
   checked = false,
+  selectedIds,
   onToggleSelect,
   onModClick,
   onContextMenu
@@ -74,9 +76,14 @@ export function LinkCard({
 
   return (
     <div
-      draggable={!selectMode}
+      draggable
       onDragStart={(e) => {
-        e.dataTransfer.setData('application/x-linkmap-link', link.id)
+        // 선택된 항목을 드래그하면 선택 전체를, 아니면 이 링크만
+        const ids =
+          selectedIds && selectedIds.includes(link.id) && selectedIds.length > 0
+            ? selectedIds
+            : [link.id]
+        e.dataTransfer.setData('application/x-linkmap-link', JSON.stringify(ids))
         e.dataTransfer.effectAllowed = 'copyMove'
       }}
       onClick={(e) => {

@@ -262,6 +262,7 @@ export function LinkListColumn(): JSX.Element {
             link={l}
             selectMode={selectMode}
             checked={selected.has(l.id)}
+            selectedIds={[...selected]}
             onToggleSelect={toggleSelect}
             onModClick={onModClick}
             onContextMenu={(e, link) => {

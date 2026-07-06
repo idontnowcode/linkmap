@@ -31,8 +31,8 @@ export function LeftRail(): JSX.Element {
   const counts = useAppStore((s) => s.counts)
   const deleteCollection = useAppStore((s) => s.deleteCollection)
   const moveCollection = useAppStore((s) => s.moveCollection)
-  const addLinkToCollection = useAppStore((s) => s.addLinkToCollection)
-  const addTagToLink = useAppStore((s) => s.addTagToLink)
+  const bulkAddToCollection = useAppStore((s) => s.bulkAddToCollection)
+  const bulkAddTag = useAppStore((s) => s.bulkAddTag)
   const deleteTag = useAppStore((s) => s.deleteTag)
   const activeView = useUiStore((s) => s.activeView)
   const setView = useUiStore((s) => s.setView)
@@ -92,6 +92,18 @@ export function LeftRail(): JSX.Element {
   const canDropOn = (target: string): boolean =>
     !!dragId && dragId !== target && !descendantsOf(dragId).has(target)
 
+  // 드롭된 링크 id들(다중 선택 지원). 구버전 단일 id도 허용.
+  const getLinkIds = (e: React.DragEvent): string[] => {
+    const raw = e.dataTransfer.getData('application/x-linkmap-link')
+    if (!raw) return []
+    try {
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : [raw]
+    } catch {
+      return [raw]
+    }
+  }
+
   const renderCollection = (c: Collection, depth: number): JSX.Element => {
     const kids = childrenOf.get(c.id) ?? []
     const hasKids = kids.length > 0
@@ -125,8 +137,8 @@ export function LeftRail(): JSX.Element {
           onDrop={(e) => {
             e.preventDefault()
             e.stopPropagation()
-            const linkId = e.dataTransfer.getData('application/x-linkmap-link')
-            if (linkId) void addLinkToCollection(c.id, linkId)
+            const linkIds = getLinkIds(e)
+            if (linkIds.length) void bulkAddToCollection(c.id, linkIds)
             else if (canDropOn(c.id)) void moveCollection(dragId!, c.id)
             setDragId(null)
             setDropTarget(null)
@@ -306,8 +318,8 @@ export function LeftRail(): JSX.Element {
                     onDrop={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      const linkId = e.dataTransfer.getData('application/x-linkmap-link')
-                      if (linkId) void addTagToLink(linkId, t.id)
+                      const linkIds = getLinkIds(e)
+                      if (linkIds.length) void bulkAddTag(linkIds, t.id)
                       setDropTarget(null)
                     }}
                     className={cn(

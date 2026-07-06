@@ -41,7 +41,9 @@ interface AppState {
 
   addTagToLink: (linkId: string, tagId: string) => Promise<void>
   removeTagFromLink: (linkId: string, tagId: string) => Promise<void>
+  bulkAddTag: (linkIds: string[], tagId: string) => Promise<void>
   bulkRemoveTag: (linkIds: string[], tagId: string) => Promise<void>
+  bulkAddToCollection: (collectionId: string, linkIds: string[]) => Promise<void>
   bulkRemoveFromCollection: (linkIds: string[], collectionId: string) => Promise<void>
 }
 
@@ -173,6 +175,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     await window.api.updateLink(linkId, { tagIds: link.tagIds.filter((t) => t !== tagId) })
     await get().refresh()
   },
+  bulkAddTag: async (linkIds, tagId) => {
+    const byId = new Map(get().snapshot.links.map((l) => [l.id, l]))
+    for (const id of linkIds) {
+      const link = byId.get(id)
+      if (link && !link.tagIds.includes(tagId)) {
+        await window.api.updateLink(id, { tagIds: [...link.tagIds, tagId] })
+      }
+    }
+    await get().refresh()
+  },
   bulkRemoveTag: async (linkIds, tagId) => {
     const byId = new Map(get().snapshot.links.map((l) => [l.id, l]))
     for (const id of linkIds) {
@@ -181,6 +193,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         await window.api.updateLink(id, { tagIds: link.tagIds.filter((t) => t !== tagId) })
       }
     }
+    await get().refresh()
+  },
+  bulkAddToCollection: async (collectionId, linkIds) => {
+    for (const id of linkIds) await window.api.addLinkToCollection(collectionId, id)
     await get().refresh()
   },
   bulkRemoveFromCollection: async (linkIds, collectionId) => {
