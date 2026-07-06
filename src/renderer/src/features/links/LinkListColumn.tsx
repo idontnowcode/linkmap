@@ -16,7 +16,6 @@ import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { ContextMenu, type MenuItem } from '@/components/ui/ContextMenu'
 import { openTarget } from '@/lib/openLink'
-import { cn } from '@/lib/utils'
 
 export function LinkListColumn(): JSX.Element {
   const { links, viewTitle } = useVisibleLinks()
@@ -70,6 +69,12 @@ export function LinkListColumn(): JSX.Element {
     exitSelect()
   }
 
+  const emptyTrash = async (): Promise<void> => {
+    if (!links.length) return
+    if (!confirm(`휴지통의 ${links.length}개 항목을 영구 삭제할까요? 되돌릴 수 없습니다.`)) return
+    await bulkDelete(links.map((l) => l.id))
+  }
+
   const linkMenuItems = (link: LinkWithTags): MenuItem[] => {
     const items: MenuItem[] = [
       { label: '열기', icon: <ExternalLink size={14} />, onClick: () => openTarget(link.kind, link.url) },
@@ -103,19 +108,29 @@ export function LinkListColumn(): JSX.Element {
           </div>
           <p className="mt-0.5 text-sm text-ink-muted">{links.length}개 링크</p>
         </div>
-        {selectMode ? (
-          <button onClick={exitSelect} className="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-list">
-            취소
-          </button>
-        ) : (
-          <button
-            onClick={(e) => setHeaderMenu({ x: e.clientX, y: e.clientY })}
-            className="rounded-sm p-1 text-ink-muted hover:bg-list"
-            title="메뉴"
-          >
-            <MoreVertical size={16} />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {isTrash && !selectMode && links.length > 0 && (
+            <button
+              onClick={() => void emptyTrash()}
+              className="flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+            >
+              <Trash2 size={13} /> 비우기
+            </button>
+          )}
+          {selectMode ? (
+            <button onClick={exitSelect} className="rounded-md px-2 py-1 text-sm text-ink-muted hover:bg-list">
+              취소
+            </button>
+          ) : (
+            <button
+              onClick={(e) => setHeaderMenu({ x: e.clientX, y: e.clientY })}
+              className="rounded-sm p-1 text-ink-muted hover:bg-list"
+              title="메뉴"
+            >
+              <MoreVertical size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* In-context search */}
@@ -174,7 +189,7 @@ export function LinkListColumn(): JSX.Element {
       )}
 
       {/* List */}
-      <div className={cn('flex-1 overflow-y-auto')}>
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {filtered.map((l) => (
           <LinkCard
             key={l.id}

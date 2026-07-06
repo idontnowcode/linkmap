@@ -78,7 +78,7 @@ export function DetailPanel(): JSX.Element {
       </div>
 
       {/* Tab body */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {activeTab === 'details' && <DetailsTab link={link} />}
         {activeTab === 'relations' && <RelationsTab link={link} />}
         {activeTab === 'notes' && <NotesTab link={link} />}

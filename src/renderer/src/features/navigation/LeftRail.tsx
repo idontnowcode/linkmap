@@ -208,7 +208,7 @@ export function LeftRail(): JSX.Element {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
         {/* Smart views */}
         <nav className="mb-4 space-y-0.5">
           {smartViews.map((v) => {
