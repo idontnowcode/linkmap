@@ -38,6 +38,11 @@ interface AppState {
   moveCollection: (id: string, parentId: string | null) => Promise<void>
   addLinkToCollection: (collectionId: string, linkId: string) => Promise<void>
   removeLinkFromCollection: (collectionId: string, linkId: string) => Promise<void>
+
+  addTagToLink: (linkId: string, tagId: string) => Promise<void>
+  removeTagFromLink: (linkId: string, tagId: string) => Promise<void>
+  bulkRemoveTag: (linkIds: string[], tagId: string) => Promise<void>
+  bulkRemoveFromCollection: (linkIds: string[], collectionId: string) => Promise<void>
 }
 
 const emptySnapshot: GraphSnapshot = {
@@ -153,6 +158,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   removeLinkFromCollection: async (collectionId, linkId) => {
     await window.api.removeLinkFromCollection(collectionId, linkId)
+    await get().refresh()
+  },
+
+  addTagToLink: async (linkId, tagId) => {
+    const link = get().snapshot.links.find((l) => l.id === linkId)
+    if (!link || link.tagIds.includes(tagId)) return
+    await window.api.updateLink(linkId, { tagIds: [...link.tagIds, tagId] })
+    await get().refresh()
+  },
+  removeTagFromLink: async (linkId, tagId) => {
+    const link = get().snapshot.links.find((l) => l.id === linkId)
+    if (!link) return
+    await window.api.updateLink(linkId, { tagIds: link.tagIds.filter((t) => t !== tagId) })
+    await get().refresh()
+  },
+  bulkRemoveTag: async (linkIds, tagId) => {
+    const byId = new Map(get().snapshot.links.map((l) => [l.id, l]))
+    for (const id of linkIds) {
+      const link = byId.get(id)
+      if (link && link.tagIds.includes(tagId)) {
+        await window.api.updateLink(id, { tagIds: link.tagIds.filter((t) => t !== tagId) })
+      }
+    }
+    await get().refresh()
+  },
+  bulkRemoveFromCollection: async (linkIds, collectionId) => {
+    for (const id of linkIds) await window.api.removeLinkFromCollection(collectionId, id)
     await get().refresh()
   }
 }))

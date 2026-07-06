@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, ExternalLink, Plus } from 'lucide-react'
 import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
@@ -12,6 +12,17 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
   const updateLink = useAppStore((s) => s.updateLink)
   const openLinkForm = useUiStore((s) => s.openLinkForm)
   const openCollectionPicker = useUiStore((s) => s.openCollectionPicker)
+
+  const [tagMenuOpen, setTagMenuOpen] = useState(false)
+  const tagMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!tagMenuOpen) return
+    const onClick = (e: MouseEvent): void => {
+      if (tagMenuRef.current && !tagMenuRef.current.contains(e.target as Node)) setTagMenuOpen(false)
+    }
+    window.addEventListener('mousedown', onClick)
+    return () => window.removeEventListener('mousedown', onClick)
+  }, [tagMenuOpen])
 
   const tagsById = new Map(tags.map((t) => [t.id, t]))
   const assigned = link.tagIds.map((id) => tagsById.get(id)).filter(Boolean)
@@ -61,22 +72,30 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
             </span>
           ))}
           {available.length > 0 && (
-            <div className="group relative">
-              <button className="grid h-[22px] w-[22px] place-items-center rounded-sm border border-line text-ink-muted hover:bg-list">
+            <div className="relative" ref={tagMenuRef}>
+              <button
+                onClick={() => setTagMenuOpen((v) => !v)}
+                className="grid h-[22px] w-[22px] place-items-center rounded-sm border border-line text-ink-muted hover:bg-list"
+              >
                 <Plus size={13} />
               </button>
-              <div className="absolute left-0 top-7 z-10 hidden min-w-[120px] flex-col rounded-md border border-line bg-white py-1 shadow-pop group-hover:flex">
-                {available.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => addTag(t.id)}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-list"
-                  >
-                    <span className="h-2 w-2 rounded-full" style={{ background: t.color }} />
-                    {t.name}
-                  </button>
-                ))}
-              </div>
+              {tagMenuOpen && (
+                <div className="absolute left-0 top-7 z-20 flex max-h-52 min-w-[140px] flex-col overflow-y-auto rounded-md border border-line bg-white py-1 shadow-pop">
+                  {available.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        addTag(t.id)
+                        setTagMenuOpen(false)
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-list"
+                    >
+                      <span className="h-2 w-2 rounded-full" style={{ background: t.color }} />
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

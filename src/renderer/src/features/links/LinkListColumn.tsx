@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import {
+  ArrowDownAZ,
   CheckSquare,
+  Clock,
   ExternalLink,
+  FolderMinus,
   FolderPlus,
+  Minus,
   MoreVertical,
   Pencil,
   RotateCcw,
@@ -28,22 +32,35 @@ export function LinkListColumn(): JSX.Element {
   const bulkTrash = useAppStore((s) => s.bulkTrash)
   const bulkRestore = useAppStore((s) => s.bulkRestore)
   const bulkDelete = useAppStore((s) => s.bulkDelete)
+  const removeTagFromLink = useAppStore((s) => s.removeTagFromLink)
+  const removeLinkFromCollection = useAppStore((s) => s.removeLinkFromCollection)
+  const bulkRemoveTag = useAppStore((s) => s.bulkRemoveTag)
+  const bulkRemoveFromCollection = useAppStore((s) => s.bulkRemoveFromCollection)
 
   const isTrash = activeView.kind === 'smart' && activeView.id === 'trash'
+  const contextTagId = activeView.kind === 'tag' ? activeView.id : null
+  const contextColId = activeView.kind === 'collection' ? activeView.id : null
 
   const [localQuery, setLocalQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'default' | 'name' | 'recent'>('default')
+  const [anchor, setAnchor] = useState<string | null>(null)
   const [headerMenu, setHeaderMenu] = useState<{ x: number; y: number } | null>(null)
   const [linkMenu, setLinkMenu] = useState<{ x: number; y: number; link: LinkWithTags } | null>(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  const filtered = localQuery
+  const searched = localQuery
     ? links.filter(
         (l) =>
           l.title.toLowerCase().includes(localQuery.toLowerCase()) ||
           l.url.toLowerCase().includes(localQuery.toLowerCase())
       )
     : links
+  const filtered = [...searched].sort((a, b) => {
+    if (sortBy === 'name') return a.title.localeCompare(b.title)
+    if (sortBy === 'recent') return b.createdAt - a.createdAt
+    return 0
+  })
 
   const toggleSelect = (id: string): void =>
     setSelected((prev) => {
@@ -51,6 +68,39 @@ export function LinkListColumn(): JSX.Element {
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+
+  // Ctrl/Cmd = 토글, Shift = 앵커부터 범위 선택
+  const onModClick = (e: React.MouseEvent, id: string): void => {
+    if (!selectMode) setSelectMode(true)
+    if (e.shiftKey && anchor) {
+      const ids = filtered.map((l) => l.id)
+      const i0 = ids.indexOf(anchor)
+      const i1 = ids.indexOf(id)
+      if (i0 >= 0 && i1 >= 0) {
+        const [a, b] = i0 < i1 ? [i0, i1] : [i1, i0]
+        setSelected((prev) => {
+          const n = new Set(prev)
+          for (let i = a; i <= b; i++) n.add(ids[i])
+          return n
+        })
+      }
+    } else {
+      toggleSelect(id)
+      setAnchor(id)
+    }
+  }
+
+  const excludeOne = (link: LinkWithTags): void => {
+    if (contextTagId) void removeTagFromLink(link.id, contextTagId)
+    else if (contextColId) void removeLinkFromCollection(contextColId, link.id)
+  }
+  const bulkExclude = async (): Promise<void> => {
+    const ids = [...selected]
+    if (!ids.length) return
+    if (contextTagId) await bulkRemoveTag(ids, contextTagId)
+    else if (contextColId) await bulkRemoveFromCollection(ids, contextColId)
+    exitSelect()
+  }
 
   const allChecked = filtered.length > 0 && filtered.every((l) => selected.has(l.id))
   const toggleAll = (): void =>
@@ -81,6 +131,12 @@ export function LinkListColumn(): JSX.Element {
       { label: '편집', icon: <Pencil size={14} />, onClick: () => openLinkForm(null, link.id) },
       { label: '컬렉션에 추가', icon: <FolderPlus size={14} />, onClick: () => openCollectionPicker(link.id) }
     ]
+    if (contextTagId) {
+      items.push({ label: '이 태그에서 제외', icon: <Minus size={14} />, onClick: () => excludeOne(link) })
+    }
+    if (contextColId) {
+      items.push({ label: '이 폴더에서 제외', icon: <FolderMinus size={14} />, onClick: () => excludeOne(link) })
+    }
     if (isTrash) {
       items.push({ label: '복원', icon: <RotateCcw size={14} />, onClick: () => void restoreLink(link.id) })
       items.push({
@@ -158,6 +214,16 @@ export function LinkListColumn(): JSX.Element {
           />
           <span className="text-sm text-ink-muted">{selected.size}개 선택</span>
           <div className="ml-auto flex gap-1.5">
+            {(contextTagId || contextColId) && (
+              <button
+                onClick={() => void bulkExclude()}
+                disabled={!selected.size}
+                className="flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-sm text-ink-strong hover:bg-white disabled:opacity-40"
+              >
+                {contextTagId ? <Minus size={13} /> : <FolderMinus size={13} />}
+                {contextTagId ? '태그에서 제외' : '폴더에서 제외'}
+              </button>
+            )}
             {isTrash ? (
               <>
                 <button
@@ -197,6 +263,7 @@ export function LinkListColumn(): JSX.Element {
             selectMode={selectMode}
             checked={selected.has(l.id)}
             onToggleSelect={toggleSelect}
+            onModClick={onModClick}
             onContextMenu={(e, link) => {
               e.preventDefault()
               e.stopPropagation()
@@ -216,9 +283,23 @@ export function LinkListColumn(): JSX.Element {
           onClose={() => setHeaderMenu(null)}
           items={[
             {
-              label: '항목 선택 (일괄 삭제)',
+              label: '항목 선택 (일괄)',
               icon: <CheckSquare size={14} />,
               onClick: () => setSelectMode(true)
+            },
+            {
+              label: `이름순 정렬${sortBy === 'name' ? ' ✓' : ''}`,
+              icon: <ArrowDownAZ size={14} />,
+              onClick: () => setSortBy('name')
+            },
+            {
+              label: `최근순 정렬${sortBy === 'recent' ? ' ✓' : ''}`,
+              icon: <Clock size={14} />,
+              onClick: () => setSortBy('recent')
+            },
+            {
+              label: `기본 순서${sortBy === 'default' ? ' ✓' : ''}`,
+              onClick: () => setSortBy('default')
             }
           ]}
         />

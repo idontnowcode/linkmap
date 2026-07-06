@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import { File, Folder, Globe, Plus, Sparkles } from 'lucide-react'
-import type { LinkKind } from '@shared/types'
+import { useEffect, useMemo, useState } from 'react'
+import { File, Folder, FolderClosed, Globe, Plus, Sparkles } from 'lucide-react'
+import type { Collection, LinkKind } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { Modal } from '@/components/ui/Modal'
@@ -17,10 +17,12 @@ export function LinkFormDialog(): JSX.Element {
   const selectNode = useUiStore((s) => s.selectNode)
 
   const tags = useAppStore((s) => s.snapshot.tags)
-  const editLink = useAppStore((s) => s.snapshot.links.find((l) => l.id === editId))
+  const collections = useAppStore((s) => s.snapshot.collections)
   const createLink = useAppStore((s) => s.createLink)
   const updateLink = useAppStore((s) => s.updateLink)
   const createTag = useAppStore((s) => s.createTag)
+  const addLinkToCollection = useAppStore((s) => s.addLinkToCollection)
+  const removeLinkFromCollection = useAppStore((s) => s.removeLinkFromCollection)
 
   const [kind, setKind] = useState<LinkKind>('web')
   const [url, setUrl] = useState('')
@@ -31,6 +33,7 @@ export function LinkFormDialog(): JSX.Element {
   const [content, setContent] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const [tagIds, setTagIds] = useState<string[]>([])
+  const [collectionIds, setCollectionIds] = useState<string[]>([])
   const [addingTag, setAddingTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   const [fetching, setFetching] = useState(false)
@@ -39,21 +42,28 @@ export function LinkFormDialog(): JSX.Element {
   const isWeb = kind === 'web'
   const isNote = kind === 'note'
 
-  // 폼 초기화
+  // 폼 초기화 — open/editId 기준으로만 (refresh로 editLink 참조가 바뀌어도 재설정 안 함)
   useEffect(() => {
     if (!open) return
     setAddingTag(false)
     setNewTagName('')
-    if (editLink) {
-      setKind(editLink.kind)
-      setUrl(editLink.url)
-      setTitle(editLink.title)
-      setDescription(editLink.description ?? '')
-      setFavicon(editLink.favicon)
-      setThumbnail(editLink.thumbnail)
-      setContent(editLink.content)
-      setNote(editLink.note ?? '')
-      setTagIds(editLink.tagIds)
+    const el = useAppStore.getState().snapshot.links.find((l) => l.id === editId)
+    if (el) {
+      setKind(el.kind)
+      setUrl(el.url)
+      setTitle(el.title)
+      setDescription(el.description ?? '')
+      setFavicon(el.favicon)
+      setThumbnail(el.thumbnail)
+      setContent(el.content)
+      setNote(el.note ?? '')
+      setTagIds(el.tagIds)
+      setCollectionIds(
+        useAppStore
+          .getState()
+          .snapshot.collectionLinks.filter((cl) => cl.linkId === editId)
+          .map((cl) => cl.collectionId)
+      )
     } else {
       setKind(prefill?.kind ?? 'web')
       setUrl(prefill?.url ?? '')
@@ -64,8 +74,10 @@ export function LinkFormDialog(): JSX.Element {
       setContent(prefill?.content ?? null)
       setNote(prefill?.note ?? '')
       setTagIds(prefill?.tagIds ?? [])
+      setCollectionIds([])
     }
-  }, [open, editLink, prefill])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editId, prefill])
 
   const pick = async (mode: 'file' | 'folder'): Promise<void> => {
     const paths = await window.api.pickPaths(mode)
@@ -95,6 +107,39 @@ export function LinkFormDialog(): JSX.Element {
 
   const invalid = isNote ? !title.trim() : !url || !title
 
+  // 컬렉션 트리 순서(들여쓰기용)
+  const orderedCols = useMemo(() => {
+    const kids = new Map<string | null, Collection[]>()
+    for (const c of collections) {
+      const k = c.parentId ?? null
+      kids.set(k, [...(kids.get(k) ?? []), c])
+    }
+    const out: { c: Collection; depth: number }[] = []
+    const walk = (p: string | null, d: number): void => {
+      for (const c of kids.get(p) ?? []) {
+        out.push({ c, depth: d })
+        walk(c.id, d + 1)
+      }
+    }
+    walk(null, 0)
+    return out
+  }, [collections])
+
+  const toggleCol = (id: string): void =>
+    setCollectionIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
+
+  const syncCollections = async (linkId: string): Promise<void> => {
+    const current = new Set(
+      useAppStore
+        .getState()
+        .snapshot.collectionLinks.filter((cl) => cl.linkId === linkId)
+        .map((cl) => cl.collectionId)
+    )
+    const target = new Set(collectionIds)
+    for (const cid of target) if (!current.has(cid)) await addLinkToCollection(cid, linkId)
+    for (const cid of current) if (!target.has(cid)) await removeLinkFromCollection(cid, linkId)
+  }
+
   const submit = async (): Promise<void> => {
     if (invalid) return
     setSaving(true)
@@ -102,12 +147,14 @@ export function LinkFormDialog(): JSX.Element {
       const payload = isNote
         ? { kind, url: '', title, note, tagIds }
         : { kind, url, title, description, favicon, thumbnail, content, tagIds }
+      let linkId = editId
       if (editId) {
         await updateLink(editId, payload)
       } else {
-        const id = await createLink(payload)
-        selectNode(id, 'link')
+        linkId = await createLink(payload)
+        selectNode(linkId, 'link')
       }
+      if (linkId) await syncCollections(linkId)
       close()
     } finally {
       setSaving(false)
@@ -227,6 +274,7 @@ export function LinkFormDialog(): JSX.Element {
             return (
               <button
                 key={t.id}
+                type="button"
                 onClick={() => toggleTag(t.id)}
                 className="rounded-sm px-2 py-1 text-sm font-medium transition-all"
                 style={{
@@ -260,6 +308,7 @@ export function LinkFormDialog(): JSX.Element {
             />
           ) : (
             <button
+              type="button"
               onClick={() => setAddingTag(true)}
               className="flex items-center gap-1 rounded-sm border border-dashed border-line px-2 py-1 text-sm text-ink-muted hover:border-brand hover:text-brand"
             >
@@ -268,6 +317,29 @@ export function LinkFormDialog(): JSX.Element {
           )}
         </div>
       </Field>
+
+      {collections.length > 0 && (
+        <Field label="폴더(컬렉션)">
+          <div className="max-h-32 overflow-y-auto rounded-md border border-line p-1">
+            {orderedCols.map(({ c, depth }) => (
+              <label
+                key={c.id}
+                style={{ paddingLeft: 6 + depth * 14 }}
+                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-sm hover:bg-list"
+              >
+                <input
+                  type="checkbox"
+                  checked={collectionIds.includes(c.id)}
+                  onChange={() => toggleCol(c.id)}
+                  className="h-3.5 w-3.5 accent-brand"
+                />
+                <FolderClosed size={13} className="text-ink-muted" />
+                <span className="truncate">{c.name}</span>
+              </label>
+            ))}
+          </div>
+        </Field>
+      )}
     </Modal>
   )
 }

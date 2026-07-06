@@ -18,6 +18,11 @@ interface SettingsState {
   hideUnmatched: boolean
   /** 저장된 필터(검색어) 프리셋 */
   savedFilters: SavedFilter[]
+  /** 패널 너비(px) */
+  railWidth: number
+  listWidth: number
+  setRailWidth: (v: number) => void
+  setListWidth: (v: number) => void
   setAiSuggest: (v: boolean) => void
   setShowTags: (v: boolean) => void
   setShowCollections: (v: boolean) => void
@@ -34,6 +39,10 @@ export const useSettingsStore = create<SettingsState>()(
       showCollections: true,
       hideUnmatched: false,
       savedFilters: [],
+      railWidth: 220,
+      listWidth: 248,
+      setRailWidth: (v) => set({ railWidth: Math.max(160, Math.min(400, v)) }),
+      setListWidth: (v) => set({ listWidth: Math.max(180, Math.min(500, v)) }),
       setAiSuggest: (v) => set({ aiSuggest: v }),
       setShowTags: (v) => set({ showTags: v }),
       setShowCollections: (v) => set({ showCollections: v }),

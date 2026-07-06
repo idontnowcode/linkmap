@@ -61,15 +61,35 @@ export function buildGraph(
   // relation에 등장하는 비-링크 노드 (설정에 따라 게이팅)
   const tagNodeIds = new Set<string>()
   const colNodeIds = new Set<string>()
+  const relationPairs = new Set<string>()
   for (const r of snapshot.relations) {
+    relationPairs.add(`${r.sourceId}|${r.targetId}`)
+    relationPairs.add(`${r.targetId}|${r.sourceId}`)
     if (r.sourceKind === 'tag' && showTags) tagNodeIds.add(r.sourceId)
     if (r.targetKind === 'tag' && showTags) tagNodeIds.add(r.targetId)
     if (r.sourceKind === 'collection' && showCollections) colNodeIds.add(r.sourceId)
     if (r.targetKind === 'collection' && showCollections) colNodeIds.add(r.targetId)
   }
 
-  // 컬렉션 멤버십 → 컬렉션 노드 + '포함' 점선 엣지, + 폴더 트리(parent→child)
   const membershipEdges: FlowEdge[] = []
+
+  // 태그 멤버십 → 태그 노드 + '태그' 점선 엣지 (태그가 붙은 링크가 있으면 그래프에 등장)
+  if (showTags) {
+    for (const lt of snapshot.linkTags) {
+      if (!linkById.has(lt.linkId) || !tagById.has(lt.tagId)) continue
+      tagNodeIds.add(lt.tagId)
+      if (relationPairs.has(`${lt.tagId}|${lt.linkId}`)) continue // relation 중복 방지
+      membershipEdges.push({
+        id: `tagmem-${lt.tagId}-${lt.linkId}`,
+        source: lt.tagId,
+        target: lt.linkId,
+        type: 'relation',
+        data: { relationType: 'custom', label: '태그', membership: true }
+      })
+    }
+  }
+
+  // 컬렉션 멤버십 → 컬렉션 노드 + '포함' 점선 엣지, + 폴더 트리(parent→child)
   if (showCollections) {
     for (const cl of snapshot.collectionLinks) {
       if (!linkById.has(cl.linkId) || !colById.has(cl.collectionId)) continue

@@ -35,6 +35,7 @@ interface LinkCardProps {
   selectMode?: boolean
   checked?: boolean
   onToggleSelect?: (id: string) => void
+  onModClick?: (e: React.MouseEvent, id: string) => void
   onContextMenu?: (e: React.MouseEvent, link: LinkWithTags) => void
 }
 
@@ -43,6 +44,7 @@ export function LinkCard({
   selectMode = false,
   checked = false,
   onToggleSelect,
+  onModClick,
   onContextMenu
 }: LinkCardProps): JSX.Element {
   const selectedNodeId = useUiStore((s) => s.selectedNodeId)
@@ -77,7 +79,11 @@ export function LinkCard({
         e.dataTransfer.setData('application/x-linkmap-link', link.id)
         e.dataTransfer.effectAllowed = 'copyMove'
       }}
-      onClick={() => {
+      onClick={(e) => {
+        if (onModClick && (e.shiftKey || e.ctrlKey || e.metaKey)) {
+          onModClick(e, link.id)
+          return
+        }
         if (selectMode) {
           onToggleSelect?.(link.id)
           return
@@ -105,7 +111,9 @@ export function LinkCard({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-body font-medium text-ink-strong">{link.title}</p>
-        <p className="truncate text-sm text-ink-muted">{link.domain ?? link.url}</p>
+        <p className="truncate text-sm text-ink-muted">
+          {link.description || link.domain || link.url}
+        </p>
         {snip && (
           <p className="mt-1 line-clamp-2 text-sm text-ink-muted">
             <span className="mr-1 rounded-sm bg-amber-100 px-1 text-[10px] font-medium text-amber-700">

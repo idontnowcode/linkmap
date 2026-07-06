@@ -32,6 +32,7 @@ export function LeftRail(): JSX.Element {
   const deleteCollection = useAppStore((s) => s.deleteCollection)
   const moveCollection = useAppStore((s) => s.moveCollection)
   const addLinkToCollection = useAppStore((s) => s.addLinkToCollection)
+  const addTagToLink = useAppStore((s) => s.addTagToLink)
   const deleteTag = useAppStore((s) => s.deleteTag)
   const activeView = useUiStore((s) => s.activeView)
   const setView = useUiStore((s) => s.setView)
@@ -245,9 +246,27 @@ export function LeftRail(): JSX.Element {
                   e.stopPropagation()
                   setMenu({ x: e.clientX, y: e.clientY, kind: 'tag', id: t.id, name: t.name })
                 }}
+                onDragOver={(e) => {
+                  if (!e.dataTransfer.types.includes('application/x-linkmap-link')) return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  e.dataTransfer.dropEffect = 'copy'
+                  if (dropTarget !== t.id) setDropTarget(t.id)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  const linkId = e.dataTransfer.getData('application/x-linkmap-link')
+                  if (linkId) void addTagToLink(linkId, t.id)
+                  setDropTarget(null)
+                }}
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-body',
-                  active ? 'bg-rail-active text-white' : 'text-ink-dark hover:bg-rail-hover'
+                  dropTarget === t.id
+                    ? 'bg-brand/30 ring-1 ring-brand'
+                    : active
+                      ? 'bg-rail-active text-white'
+                      : 'text-ink-dark hover:bg-rail-hover'
                 )}
               >
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
