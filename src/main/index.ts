@@ -1,10 +1,16 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
+import { existsSync } from 'fs'
 import { initDb } from './db/client'
 import { seedIfEmpty } from './db/seed'
 import { registerIpcHandlers } from './ipc'
 
 const isDev = !app.isPackaged
+
+// 개발: 프로젝트 루트의 resources/icon.png · 패키징: extraResources로 복사된 리소스 경로
+const iconPath = isDev
+  ? join(__dirname, '../../resources/icon.png')
+  : join(process.resourcesPath, 'icon.png')
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -15,6 +21,7 @@ function createWindow(): void {
     show: false,
     backgroundColor: '#1B2030',
     title: 'LinkMap',
+    ...(existsSync(iconPath) ? { icon: iconPath } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,

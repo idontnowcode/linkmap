@@ -6,10 +6,16 @@ directories:
 files:
   - out/**/*
   - package.json
+extraResources:
+  - from: resources/icon.png
+    to: icon.png
 win:
   target: nsis
+  icon: build/icon.png
 mac:
   target: dmg
   category: public.app-category.productivity
+  icon: build/icon.png
 linux:
   target: AppImage
+  icon: build/icon.png
