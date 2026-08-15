@@ -3,17 +3,13 @@
 관계형 북마크 그래프 매니저 (Electron 데스크톱).
 
 ## 현재 상태
-- **Phase**: Design (스펙 + 디자인 시스템 + 와이어프레임 완료) → **사용자 승인 대기 중**
-- 승인 후 Scaffold → Build (구현 순서는 `docs/05_CLAUDE_BUILD_PROMPT.md`).
+- **Phase**: Do 완료, 반복 개선 진행 중 (런어블 앱, 기능 다수 구현 완료)
+- 전체 기능 목록·구조·데이터 모델은 `docs/08_FEATURE_GUIDE.md` 참조 (가장 최신, 구현 기준).
+- 실행: `npm run dev`
 
 ## 문서 (읽는 순서)
-- `docs/01_PRD.md` — 제품 요구사항
-- `docs/02_UI_UX_SPEC.md` — 3-panel UX, 노드/엣지/검색 사양
-- `docs/03_DATA_MODEL.md` — Drizzle/SQLite 스키마
-- `docs/04_TECH_SPEC.md` — 스택·아키텍처·폴더 구조
-- `docs/05_CLAUDE_BUILD_PROMPT.md` — **구현 진입점** (Claude는 여기부터)
-- `docs/06_DESIGN_SYSTEM.md` — 색/타이포/노드 토큰
-- `docs/07_WIREFRAME_COMPONENT_TREE.md` — 와이어프레임 + 컴포넌트 트리
+- `docs/08_FEATURE_GUIDE.md` — **구현 완료 기준 종합 기능 설명서** (목적·구조·기능 전체, 가장 정확)
+- `docs/01_PRD.md` ~ `07_WIREFRAME_COMPONENT_TREE.md` — 초기 기획 단계 문서(참고용, 이후 확장된 부분은 08번이 우선)
 
 ## 스택
-Electron · electron-vite · React 18 · TS(strict) · Tailwind · shadcn/ui · Zustand · React Flow · d3-force · better-sqlite3 · Drizzle.
+Electron · electron-vite · React 18 · TS(strict) · Tailwind(자체 UI 프리미티브) · Zustand · React Flow · d3-force/dagre · @libsql/client · Drizzle.
