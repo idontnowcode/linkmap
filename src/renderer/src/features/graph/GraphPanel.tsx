@@ -30,6 +30,7 @@ export function GraphPanel(): JSX.Element {
   const removeSavedFilter = useSettingsStore((s) => s.removeSavedFilter)
   const [layoutOpen, setLayoutOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const saveCurrent = (): void => {
     const q = searchQuery.trim()
@@ -141,9 +142,48 @@ export function GraphPanel(): JSX.Element {
           )}
         </div>
 
-        <button className="rounded-md p-2 text-ink-muted hover:bg-list" title="도움말">
-          <HelpCircle size={16} />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setHelpOpen((v) => !v)}
+            className="rounded-md p-2 text-ink-muted hover:bg-list"
+            title="도움말"
+          >
+            <HelpCircle size={16} />
+          </button>
+          {helpOpen && (
+            <div
+              className="absolute right-0 top-10 z-20 w-72 rounded-md border border-line bg-white p-3 text-body shadow-pop"
+              onMouseLeave={() => setHelpOpen(false)}
+            >
+              <p className="mb-1 text-label uppercase text-ink-muted">검색 문법</p>
+              <ul className="mb-3 space-y-0.5 text-sm text-ink-strong">
+                <li>
+                  <code className="rounded bg-list px-1">단어1 단어2</code> 공백=모두 포함(AND)
+                </li>
+                <li>
+                  <code className="rounded bg-list px-1">A, B</code> 콤마=둘 중 하나(OR)
+                </li>
+                <li>
+                  <code className="rounded bg-list px-1">&quot;정확한 구절&quot;</code> 따옴표 구절 검색
+                </li>
+                <li>
+                  <code className="rounded bg-list px-1">tag:</code>/<code className="rounded bg-list px-1">url:</code>/<code className="rounded bg-list px-1">memo:</code> 필드 검색
+                </li>
+              </ul>
+              <p className="mb-1 text-label uppercase text-ink-muted">그래프 조작</p>
+              <ul className="mb-3 space-y-0.5 text-sm text-ink-strong">
+                <li>더블클릭: 링크/파일/폴더 열기</li>
+                <li>우클릭: 관계 추가·편집·삭제 메뉴</li>
+                <li>노드 hover 후 드래그: 관계 생성</li>
+              </ul>
+              <p className="mb-1 text-label uppercase text-ink-muted">단축키</p>
+              <ul className="space-y-0.5 text-sm text-ink-strong">
+                <li>Ctrl/Cmd+N: 새 링크 추가</li>
+                <li>Esc: 선택 해제</li>
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Canvas */}

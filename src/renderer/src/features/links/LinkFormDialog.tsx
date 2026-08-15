@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { File, Folder, FolderClosed, Globe, Plus, Sparkles } from 'lucide-react'
 import type { Collection, LinkKind } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
@@ -36,6 +36,8 @@ export function LinkFormDialog(): JSX.Element {
   const [collectionIds, setCollectionIds] = useState<string[]>([])
   const [addingTag, setAddingTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
+  // Enter가 입력창을 언마운트시키면서 blur가 추가로 발생해도 태그가 중복 생성되지 않도록 가드
+  const submittingNewTag = useRef(false)
   const [fetching, setFetching] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -165,19 +167,25 @@ export function LinkFormDialog(): JSX.Element {
     setTagIds((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]))
 
   const submitNewTag = async (): Promise<void> => {
+    if (submittingNewTag.current) return // Enter 처리 중 blur로 재호출되는 경우 차단
+    submittingNewTag.current = true
     const name = newTagName.trim()
     setAddingTag(false)
     setNewTagName('')
-    if (!name) return
-    // 같은 이름이 있으면 새로 만들지 않고 선택만
-    const existing = tags.find((t) => t.name.toLowerCase() === name.toLowerCase())
-    if (existing) {
-      setTagIds((prev) => (prev.includes(existing.id) ? prev : [...prev, existing.id]))
-      return
+    try {
+      if (!name) return
+      // 같은 이름이 있으면 새로 만들지 않고 선택만
+      const existing = tags.find((t) => t.name.toLowerCase() === name.toLowerCase())
+      if (existing) {
+        setTagIds((prev) => (prev.includes(existing.id) ? prev : [...prev, existing.id]))
+        return
+      }
+      const color = TAG_PALETTE[tags.length % TAG_PALETTE.length]
+      const id = await createTag({ name, color })
+      setTagIds((prev) => [...prev, id])
+    } finally {
+      submittingNewTag.current = false
     }
-    const color = TAG_PALETTE[tags.length % TAG_PALETTE.length]
-    const id = await createTag({ name, color })
-    setTagIds((prev) => [...prev, id])
   }
 
   return (
@@ -309,7 +317,10 @@ export function LinkFormDialog(): JSX.Element {
           ) : (
             <button
               type="button"
-              onClick={() => setAddingTag(true)}
+              onClick={() => {
+                submittingNewTag.current = false
+                setAddingTag(true)
+              }}
               className="flex items-center gap-1 rounded-sm border border-dashed border-line px-2 py-1 text-sm text-ink-muted hover:border-brand hover:text-brand"
             >
               <Plus size={12} /> 새 태그
