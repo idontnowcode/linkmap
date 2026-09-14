@@ -1,6 +1,7 @@
 # LinkMap — 기능 점검 체크리스트 (결과 반영본)
 
 > 작성/실행: 2026-08-16 · 대상: `main` 브랜치(점검 중 발견된 2건 수정 반영 후)
+> 2026-09-15 추가: 버전 최신화(파일 미리보기 강화/폴더 가져오기·동기화/태그 계층) 점검 — L절 참조.
 
 ## 검증 방법 및 한계 (먼저 읽을 것)
 
@@ -205,3 +206,41 @@
 - 그 외 전체 UI 버튼 중 유일하게 죽어 있던 **그래프 툴바 도움말 버튼**을 발견해 실제 기능(도움말 팝오버)으로 연결했다.
 - 이 두 건을 제외하고, 코드 배선 추적 결과 다른 모든 버튼·인터랙션은 상태변경→IPC→DB까지 끊김 없이 연결되어 있음을 확인했다.
 - **한계**: 마우스로 실제 픽셀 좌표를 클릭해 확인하는 시각적 UI 테스트는 이 세션 환경에서 수행하지 못했다. 애니메이션/레이아웃 시각적 어긋남, CSS 렌더링 문제 등은 이 방법으로는 잡히지 않는다. 사용자가 직접 클릭해보며 위 표의 시나리오를 따라가면 추가 확인이 가능하다.
+
+---
+
+## L. 버전 최신화 추가분 점검 (2026-09-15, `docs/11_VERSION_UPGRADE_PLAN.md` 실행)
+
+> 신규 기능 4종(파일 미리보기 강화/폴더 가져오기/폴더 동기화/태그 계층)을 단계별로 구현하며 각 단계마다 `npm run typecheck` + `npm run build`로 검증했고, 마일스톤 시점(P1+P2, 전체 완료)에 `npm run dev` 부팅 로그를 확인해 런타임 에러 없음을 확인했다(B). 이번에도 마우스 클릭 자동화는 없어 나머지는 코드 배선 추적(T)으로 검증했다.
+
+| 항목 | 결과 |
+|---|---|
+| `npm run typecheck` (기능별 5회 + 최종 1회) | ✅ 매회 에러 0건 |
+| `npm run build` (기능별 5회 + 최종 1회) | ✅ 매회 main/preload/renderer 전부 성공 |
+| `npm run dev` 부팅(P1+P2 완료 시점, 전체 완료 시점) | ✅ 콘솔 에러 없음, `tags.source_path` 마이그레이션 idempotent 적용 확인 |
+| 기존 그래프/관계/컬렉션 회귀 | ✅ 해당 파일(`features/graph/**`, `features/relations/**`, `features/collections/**`, `repositories/index.ts`의 relationRepo/collectionRepo, `schema.ts`의 relations/collections 테이블) **무변경** — 코드 diff 기준 추가만 발생, 삭제·수정 없음 |
+
+| ID | 기능 | 기대 결과 | 방법 | 결과 |
+|---|---|---|---|---|
+| L1 | `path:readBinary` IPC | 확장자 화이트리스트(pdf/이미지/docx/xlsx/텍스트류) 통과 시 Uint8Array 반환, 그 외 `unsupported`, 크기 초과 시 `too_large` | T(`fileContent.ts` 로직 검토) | ✅ |
+| L2 | PDF 미리보기 | `<embed type="application/pdf">` + Blob URL, 창의 `plugins:true` | T | ✅ |
+| L3 | 이미지 미리보기 | 확장자별 정확한 MIME으로 Blob 생성 → `<img>` | T | ✅ |
+| L4 | 마크다운 미리보기 | 원문 UTF-8 디코딩 → `react-markdown`+`remark-gfm` (메모 탭과 동일 라이브러리) | T | ✅ |
+| L5 | 텍스트/코드 미리보기 | `<pre>`로 줄바꿈 보존 렌더(검색용 content와 별개 경로) | T | ✅ |
+| L6 | docx 미리보기 | `mammoth.convertToHtml` → HTML 렌더 | T | ✅ |
+| L7 | xlsx 미리보기 | `xlsx` 파싱 → 시트 탭 전환 + 표(500행 초과 시 "처음 500행만" 안내) | T | ✅ |
+| L8 | 미지원 파일/이동·삭제된 파일 | 에러 메시지 표시(형식 미지원 / 파일 없음 / 너무 큼) | T | ✅ |
+| L9 | 폴더 가져오기 버튼 | 사이드바에서 `FolderImportDialog` 오픈 | T | ✅ |
+| L10 | 폴더 선택 → 재귀 스캔 | 최대 3000개, `.git`/`node_modules`/`.svn`/`.hg`/`__pycache__`/점폴더 제외, 초과 시 truncated 안내 | T | ✅ |
+| L11 | 파일 체크박스 선택 + 전체선택/해제 | 정상 토글 | T | ✅ |
+| L12 | 가져오기 실행 | 선택 파일 → `kind:'file'` 링크 생성 + 폴더명 태그(`source_path`) 부여, 기존 활성 링크는 재사용(중복 방지) | T(`folderImport.ts` importFolderFiles 로직) | ✅ |
+| L13 | 동일 폴더 재가져오기 | 기존 폴더 태그 재사용(새 태그 안 만듦) | T(`findBySourcePath`) | ✅ |
+| L14 | 폴더 동기화(🔄) 버튼 | `source_path` 있는 태그에서만 hover 시 노출 | T | ✅ |
+| L15 | 동기화 실행 — 파일 추가됨 | 새 링크 생성 + 태그 부여, "추가 N개" 안내 | T(`syncFolderTag` addedCount) | ✅ |
+| L16 | 동기화 실행 — 파일 삭제됨 | 추적 중이던 링크를 휴지통으로 이동(영구삭제 아님), "휴지통 이동 N개" 안내 | T(`syncFolderTag` removedCount, `linkRepo.trash`) | ✅ |
+| L17 | 태그 이름에 "/" 포함 | 상위 경로가 실제 태그로 존재할 때만 자식으로 인식(`parentNameOf`), 없으면 평범한 평면 이름으로 표시 | T(`tagTree.ts`) | ✅ |
+| L18 | 태그 트리 들여쓰기/접기 | depth별 들여쓰기, ▸/▾로 자손 숨김/표시(자기 자신은 안 숨음) | T(`isHiddenByCollapse`) | ✅ |
+| L19 | 기존 컬렉션(폴더) 트리와 독립 | 태그 계층은 순수 표현이며 DB 스키마·컬렉션 로직에 어떤 변경도 없음 | T(diff 기준) | ✅ |
+| L20 | `tags.source_path` 마이그레이션 | 기존 DB에 idempotent `ALTER TABLE` 적용, 신규 DB는 `CREATE TABLE` 단계에서 포함 | T(`schema.ts` MIGRATIONS)+B(부팅 시 에러 없음) | ✅ |
+
+**한계**: L1~L20 모두 코드 배선 추적(T) + 빌드/부팅(B) 기준이며, 실제 PDF/이미지/docx/xlsx 파일을 마우스로 열어 픽셀 단위로 렌더링을 확인하지는 못했다. 폴더 가져오기/동기화도 실제 대용량 폴더(3000개 근접)로 성능을 실측하지 않았다 — 코드상 상한 로직만 확인.

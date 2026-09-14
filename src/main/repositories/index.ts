@@ -1,4 +1,4 @@
-import { and, eq, isNull, isNotNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull, isNotNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { dirname } from 'node:path'
 import { getDb, schema } from '../db/client'
@@ -141,6 +141,39 @@ export const linkRepo = {
       .where(eq(links.id, id))
       .run()
     return toLink({ ...row, favorite: !row.favorite })
+  },
+
+  /** 휴지통 제외, url 완전일치로 기존 링크 탐색 (폴더 가져오기/동기화 중복 방지용) */
+  async findActiveByUrl(url: string): Promise<Link | null> {
+    const row = await getDb()
+      .select()
+      .from(links)
+      .where(and(eq(links.url, url), isNull(links.deletedAt)))
+      .get()
+    return row ? toLink(row) : null
+  },
+
+  /** 주어진 id 중 휴지통 제외 활성 링크만 (폴더 동기화의 추적 대상 조회용) */
+  async listActiveByIds(ids: string[]): Promise<Link[]> {
+    if (!ids.length) return []
+    const rows = await getDb()
+      .select()
+      .from(links)
+      .where(and(inArray(links.id, ids), isNull(links.deletedAt)))
+      .all()
+    return rows.map(toLink)
+  }
+}
+
+// ── Link-Tag 조인 (폴더 가져오기/동기화 전용 — 기존 태그를 건드리지 않고 추가만) ──
+export const linkTagRepo = {
+  async add(linkId: string, tagId: string): Promise<void> {
+    await getDb().insert(linkTags).values({ linkId, tagId }).onConflictDoNothing().run()
+  },
+  /** 특정 태그가 달린 링크 id 목록 */
+  async linkIdsForTag(tagId: string): Promise<string[]> {
+    const rows = await getDb().select().from(linkTags).where(eq(linkTags.tagId, tagId)).all()
+    return rows.map((r) => r.linkId)
   }
 }
 
@@ -148,7 +181,7 @@ export const linkRepo = {
 export const tagRepo = {
   async create(input: CreateTagInput): Promise<Tag> {
     const db = getDb()
-    const tag = { id: nanoid(), name: input.name, color: input.color }
+    const tag = { id: nanoid(), name: input.name, color: input.color, sourcePath: input.sourcePath ?? null }
     await db.insert(tags).values(tag).run()
     return tag
   },
@@ -159,6 +192,15 @@ export const tagRepo = {
   },
   async remove(id: string): Promise<void> {
     await getDb().delete(tags).where(eq(tags.id, id)).run()
+  },
+  async get(id: string): Promise<Tag | null> {
+    const row = await getDb().select().from(tags).where(eq(tags.id, id)).get()
+    return row ?? null
+  },
+  /** source_path로 이미 만들어진 폴더 태그를 찾는다 (폴더 가져오기 중복 방지) */
+  async findBySourcePath(sourcePath: string): Promise<Tag | null> {
+    const row = await getDb().select().from(tags).where(eq(tags.sourcePath, sourcePath)).get()
+    return row ?? null
   }
 }
 

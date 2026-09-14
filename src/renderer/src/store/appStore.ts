@@ -45,6 +45,9 @@ interface AppState {
   bulkRemoveTag: (linkIds: string[], tagId: string) => Promise<void>
   bulkAddToCollection: (collectionId: string, linkIds: string[]) => Promise<void>
   bulkRemoveFromCollection: (linkIds: string[], collectionId: string) => Promise<void>
+
+  /** 폴더 태그(source_path 보유)를 재스캔해 추가/삭제된 파일을 링크에 반영 */
+  syncFolderTag: (tagId: string) => Promise<{ addedCount: number; removedCount: number }>
 }
 
 const emptySnapshot: GraphSnapshot = {
@@ -202,5 +205,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   bulkRemoveFromCollection: async (linkIds, collectionId) => {
     for (const id of linkIds) await window.api.removeLinkFromCollection(collectionId, id)
     await get().refresh()
+  },
+
+  syncFolderTag: async (tagId) => {
+    const result = await window.api.folderSync(tagId)
+    await get().refresh()
+    return { addedCount: result.addedCount, removedCount: result.removedCount }
   }
 }))

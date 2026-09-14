@@ -27,7 +27,9 @@ export const links = sqliteTable(
 export const tags = sqliteTable('tags', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  color: text('color').notNull().default('#3B82F6')
+  color: text('color').notNull().default('#3B82F6'),
+  /** 폴더 가져오기(P3)로 생성된 태그의 원본 폴더 절대경로. 수동 생성 태그는 null. */
+  sourcePath: text('source_path')
 })
 
 export const linkTags = sqliteTable(
@@ -108,7 +110,8 @@ export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS tags (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    color TEXT NOT NULL DEFAULT '#3B82F6'
+    color TEXT NOT NULL DEFAULT '#3B82F6',
+    source_path TEXT
   );
 
   CREATE TABLE IF NOT EXISTS link_tags (
@@ -149,5 +152,6 @@ export const CREATE_TABLES_SQL = `
 export const MIGRATIONS: string[] = [
   `ALTER TABLE links ADD COLUMN kind TEXT NOT NULL DEFAULT 'web'`,
   `ALTER TABLE links ADD COLUMN content TEXT`,
-  `ALTER TABLE collections ADD COLUMN parent_id TEXT REFERENCES collections(id) ON DELETE CASCADE`
+  `ALTER TABLE collections ADD COLUMN parent_id TEXT REFERENCES collections(id) ON DELETE CASCADE`,
+  `ALTER TABLE tags ADD COLUMN source_path TEXT`
 ]

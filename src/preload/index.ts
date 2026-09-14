@@ -34,8 +34,14 @@ const api: LinkMapApi = {
   openPath: (path) => ipcRenderer.invoke(IPC.openPath, path),
   pickPaths: (mode) => ipcRenderer.invoke(IPC.pickPaths, mode),
   pathInfo: (path) => ipcRenderer.invoke(IPC.pathInfo, path),
+  readBinary: (path) => ipcRenderer.invoke(IPC.readBinary, path),
   getPathForFile: (file) => webUtils.getPathForFile(file),
-  copyText: (text) => ipcRenderer.invoke(IPC.copyText, text)
+  copyText: (text) => ipcRenderer.invoke(IPC.copyText, text),
+
+  folderList: (rootPath) => ipcRenderer.invoke(IPC.folderList, rootPath),
+  folderImport: (rootPath, relativePaths) =>
+    ipcRenderer.invoke(IPC.folderImport, rootPath, relativePaths),
+  folderSync: (tagId) => ipcRenderer.invoke(IPC.folderSync, tagId)
 }
 
 contextBridge.exposeInMainWorld('api', api)

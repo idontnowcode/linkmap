@@ -17,7 +17,8 @@ import {
   tagRepo
 } from '../repositories'
 import { fetchMeta } from '../services/metaFetch'
-import { readTextFileContent } from '../services/fileContent'
+import { readTextFileContent, readBinaryFile } from '../services/fileContent'
+import { importFolderFiles, listFolderTree, syncFolderTag } from '../services/folderImport'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.graphSnapshot, () => graphRepo.snapshot())
@@ -80,5 +81,14 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle(IPC.readBinary, (_e, path: string) => readBinaryFile(path))
+
   ipcMain.handle(IPC.copyText, (_e, text: string) => clipboard.writeText(text))
+
+  // 폴더 가져오기(P3) / 폴더 동기화(P4)
+  ipcMain.handle(IPC.folderList, (_e, rootPath: string) => listFolderTree(rootPath))
+  ipcMain.handle(IPC.folderImport, (_e, rootPath: string, relativePaths: string[]) =>
+    importFolderFiles(rootPath, relativePaths)
+  )
+  ipcMain.handle(IPC.folderSync, (_e, tagId: string) => syncFolderTag(tagId))
 }

@@ -3,6 +3,8 @@ import { RefreshCw } from 'lucide-react'
 import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { Favicon } from '@/features/links/LinkCard'
+import { FilePreview } from './FilePreview'
+import { previewKindFor } from './previewKind'
 
 export function PreviewTab({ link }: { link: LinkWithTags }): JSX.Element {
   const updateLink = useAppStore((s) => s.updateLink)
@@ -23,8 +25,13 @@ export function PreviewTab({ link }: { link: LinkWithTags }): JSX.Element {
     }
   }
 
+  // 로컬 파일 링크 + 렌더링 가능한 확장자면 리치 미리보기를 상단에 우선 표시
+  const richPreviewKind = previewKindFor(link.kind, link.url)
+
   return (
     <div className="px-4 py-4">
+      {richPreviewKind && <FilePreview link={link} />}
+
       {link.thumbnail ? (
         <img
           src={link.thumbnail}

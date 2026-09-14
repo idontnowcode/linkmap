@@ -44,8 +44,44 @@ export const IPC = {
   openPath: 'shell:openPath',
   pickPaths: 'dialog:pick',
   pathInfo: 'path:info',
-  copyText: 'clipboard:writeText'
+  readBinary: 'path:readBinary',
+  copyText: 'clipboard:writeText',
+
+  folderList: 'folder:list',
+  folderImport: 'folder:import',
+  folderSync: 'folder:sync'
 } as const
+
+/** path:readBinary 결과 — 실패 시 data는 null, reason에 사유 표시 */
+export interface ReadBinaryResult {
+  ok: boolean
+  data: Uint8Array | null
+  reason?: 'not_found' | 'too_large' | 'unsupported' | 'error'
+}
+
+/** folder:list 결과 항목 */
+export interface FolderEntry {
+  relativePath: string
+  absolutePath: string
+}
+
+export interface FolderListResult {
+  root: string
+  entries: FolderEntry[]
+  truncated: boolean
+}
+
+export interface FolderImportResult {
+  tag: Tag
+  created: number
+  alreadyLinked: number
+}
+
+export interface FolderSyncResult {
+  tag: Tag
+  addedCount: number
+  removedCount: number
+}
 
 /** preload가 contextBridge로 노출하는 API 표면 */
 export interface LinkMapApi {
@@ -79,11 +115,18 @@ export interface LinkMapApi {
   openPath(path: string): Promise<string>
   pickPaths(mode: 'file' | 'folder'): Promise<string[]>
   pathInfo(path: string): Promise<PathInfo>
+  /** 바이너리 파일(PDF/이미지/docx/xlsx 등) 원문을 Uint8Array로 읽기. 확장자 화이트리스트 + 용량 제한 적용 */
+  readBinary(path: string): Promise<ReadBinaryResult>
   /** 드롭된 File 객체의 절대 경로 (Electron webUtils, 동기) */
   getPathForFile(file: File): string
 
   /** 클립보드에 텍스트 복사 */
   copyText(text: string): Promise<void>
+
+  // 폴더 가져오기/동기화
+  folderList(rootPath: string): Promise<FolderListResult>
+  folderImport(rootPath: string, relativePaths: string[]): Promise<FolderImportResult>
+  folderSync(tagId: string): Promise<FolderSyncResult>
 }
 
 declare global {

@@ -1,6 +1,6 @@
 # LinkMap — 기능 설명서
 
-> 최종 갱신: 2026-07-08 · 대상 버전: `main` (커밋 `32f6a45` 기준)
+> 최종 갱신: 2026-09-15 · 대상 버전: `main` (버전 최신화 — 파일 미리보기 강화/폴더 가져오기·동기화/태그 계층 추가 기준, `docs/11_VERSION_UPGRADE_PLAN.md` 참조)
 > 이 문서는 LinkMap의 **목적, 전체 구조, 데이터 모델, 기능 전체**를 다룬다. 설계 초기 문서(`01_PRD.md` ~ `07_WIREFRAME_COMPONENT_TREE.md`)는 기획 단계 산출물이고, 본 문서는 **구현 완료 시점 기준의 실제 동작**을 정리한 사용자·개발자 겸용 레퍼런스다.
 
 ---
@@ -46,9 +46,10 @@ LinkMap은 이를 **그래프**로 바꾼다:
 | DB | SQLite 호환 — **`@libsql/client`** (better-sqlite3 아님, 아래 2.3 참조) |
 | ORM | Drizzle ORM (`drizzle-orm/libsql`) |
 | 메타데이터 수집 | `open-graph-scraper` + 자체 fetch 기반 본문 텍스트 추출 |
-| 마크다운 | `react-markdown` + `remark-gfm` |
+| 마크다운 | `react-markdown` + `remark-gfm` (메모 및 파일 미리보기 공용) |
 | 아이콘 | `lucide-react` |
 | ID 생성 | `nanoid` |
+| 문서 미리보기 | `mammoth`(.docx → HTML), `xlsx`/SheetJS(.xlsx 시트 파싱, CDN tgz 참조) |
 
 ### 2.2 프로세스 아키텍처 (Electron 3-프로세스 모델)
 ```
@@ -105,7 +106,8 @@ LinkMap은 이를 **그래프**로 바꾼다:
 │  │  ├─ repositories/index.ts  # linkRepo/tagRepo/relationRepo/collectionRepo/graphRepo
 │  │  ├─ services/
 │  │  │  ├─ metaFetch.ts    # OpenGraph 메타 + 웹페이지 본문 텍스트 수집
-│  │  │  └─ fileContent.ts  # 로컬 텍스트/코드 파일 본문 읽기(전문검색용)
+│  │  │  ├─ fileContent.ts  # 로컬 텍스트/코드 파일 본문 읽기(전문검색용) + 바이너리 미리보기 읽기(readBinaryFile)
+│  │  │  └─ folderImport.ts # 폴더 재귀 스캔 + 일괄 링크 생성(가져오기) + 재스캔 diff(동기화)
 │  │  └─ ipc/index.ts       # 모든 IPC 핸들러 등록
 │  │
 │  ├─ preload/index.ts      # contextBridge로 window.api 노출
@@ -122,10 +124,16 @@ LinkMap은 이를 **그래프**로 바꾼다:
 │        │  ├─ uiStore.ts       # 선택 상태, 다이얼로그 열림 여부, 검색어 등
 │        │  └─ settingsStore.ts # 영속 설정(토글, 저장 필터, 패널 너비)
 │        ├─ features/
-│        │  ├─ navigation/LeftRail.tsx     # 좌측 사이드바(스마트뷰/폴더트리/태그)
+│        │  ├─ navigation/
+│        │  │  ├─ LeftRail.tsx              # 좌측 사이드바(스마트뷰/폴더트리/태그계층)
+│        │  │  └─ tagTree.ts                 # 태그 이름의 "/" 를 계층으로 파생시키는 순수 유틸
 │        │  ├─ links/                       # 링크 리스트, 카드, 폼, 가시성 필터링
+│        │  │  └─ FolderImportDialog.tsx      # 폴더 가져오기 다이얼로그
 │        │  ├─ graph/                        # React Flow 캔버스, 노드/엣지, 레이아웃
 │        │  ├─ detail/                       # 우측 상세 패널 4탭
+│        │  │  ├─ FilePreview.tsx             # 파일 리치 미리보기(pdf/이미지/md/텍스트/docx/xlsx)
+│        │  │  ├─ previewKind.ts              # 확장자 → 미리보기 종류 판정
+│        │  │  ├─ xlsxPreview.ts / XlsxTable.tsx  # xlsx 시트 파싱/표 렌더
 │        │  ├─ tags/TagFormDialog.tsx
 │        │  ├─ collections/                  # 폴더 생성/선택 다이얼로그
 │        │  ├─ relations/RelationDialog.tsx
@@ -177,7 +185,9 @@ Link ─┬─< LinkTag >─┬─ Tag
 | `deletedAt` | INTEGER? | soft delete(휴지통). null이면 활성 |
 | `createdAt` / `updatedAt` | INTEGER | epoch ms |
 
-**`tags`** — `id, name, color(hex)`
+**`tags`** — `id, name, color(hex), sourcePath(TEXT?)`
+  - `sourcePath`: 폴더 가져오기(6.12절)로 생성된 태그의 원본 폴더 절대경로. 수동 생성 태그는 null.
+  - 태그 이름에 `"/"` 를 쓰면(예: `Project: X/Firmware`) 렌더링 시 계층(트리)처럼 표시된다 — **DB는 여전히 평면**이며, 컬렉션(트리)과는 별개 개념으로 계속 분리 유지(병행 지원 안 함).
 **`collections`** — `id, name, parentId(self FK, ON DELETE CASCADE), createdAt` — 폴더 트리
 **`link_tags`** — N:M 조인 (`linkId, tagId`, PK 복합)
 **`collection_links`** — N:M 조인 (`collectionId, linkId`, PK 복합) — 하나의 링크가 여러 폴더에 속할 수 있음
@@ -196,7 +206,10 @@ Link ─┬─< LinkTag >─┬─ Tag
 | 태그 | `createTag`, `updateTag`, `deleteTag` |
 | 관계 | `createRelation`, `deleteRelation` |
 | 컬렉션 | `createCollection`, `deleteCollection`, `moveCollection`, `addLinkToCollection`, `removeLinkFromCollection` |
-| 메타/파일 | `fetchMeta`, `openExternal`, `openPath`, `pickPaths`, `pathInfo`, `getPathForFile`, `copyText` |
+| 메타/파일 | `fetchMeta`, `openExternal`, `openPath`, `pickPaths`, `pathInfo`, `readBinary`, `getPathForFile`, `copyText` |
+| 폴더 가져오기/동기화 | `folderList`(재귀 스캔), `folderImport`(선택 파일 일괄 링크화), `folderSync`(변경분 반영) |
+
+`readBinary(path)`는 pdf/이미지/docx/xlsx는 물론 텍스트/마크다운 미리보기까지 이 채널 하나로 커버한다 — 렌더러가 `TextDecoder`로 디코딩할지 그대로 `Blob`/라이브러리에 넘길지만 종류별로 분기한다(확장자 화이트리스트 + 용량 제한은 메인 프로세스에서 적용).
 
 `getSnapshot()`은 **모든 데이터를 한 번에** 반환한다(`GraphSnapshot`: links·tags·collections·relations·linkTags·collectionLinks). 렌더러는 모든 변경 작업 후 스냅샷을 다시 받아 `appStore`를 갱신한다(낙관적 업데이트 없음 — 단순함 우선).
 
@@ -219,7 +232,7 @@ Link ─┬─< LinkTag >─┬─ Tag
 ## 6. 기능 상세
 
 ### 6.1 좌측 사이드바 (`LeftRail`)
-- **상단 액션**: `+ 새 링크 추가`(primary), `+ 새 메모` / `+ 새 태그`(보조, 나란히 배치)
+- **상단 액션**: `+ 새 링크 추가`(primary), `+ 새 메모` / `+ 새 태그`(보조, 나란히 배치), `📁 폴더 가져오기`(보조, 전체 폭 — 6.12절)
 - **스마트 뷰**: 모든 링크 · 즐겨찾기 · 최근 추가(7일 이내) · 휴지통 — 각각 실시간 카운트 표시
 - **폴더(컬렉션) 섹션** (태그 섹션보다 위에 배치)
   - **중첩 트리** — 폴더 안에 폴더를 만들 수 있다(`parentId`). ▸/▾ 로 펼치기/접기.
@@ -229,9 +242,11 @@ Link ─┬─< LinkTag >─┬─ Tag
   - **폴더 선택 시**: 그 폴더 + 모든 하위 폴더에 속한 링크가 링크 목록에 표시됨.
 - **태그 섹션** (폴더 아래)
   - 색상 점 + 이름 + 카운트. 클릭 시 해당 태그의 링크만 필터링.
+  - **태그 계층 표현**: 이름에 `"/"`가 있고 그 상위 경로가 실제로 존재하는 태그 이름이면(예: `Project: X`가 있어야 `Project: X/Firmware`가 자식) 들여쓰기 + ▸/▾ 접기로 트리처럼 표시(6.12절, DB는 평면 그대로).
   - 섹션 전체 접기 가능.
   - 우클릭 → 태그 삭제.
   - **링크를 태그 위로 드래그하면 그 태그가 부여됨** (다중 선택 상태에서 드래그하면 선택된 전체에 일괄 부여).
+  - **폴더 가져오기로 생성된 태그**(`sourcePath` 보유)는 hover 시 카운트 자리에 🔄(동기화) 아이콘이 나타남 — 6.13절.
 - **하단**: 설정 버튼(⚙️) → `SettingsDialog` 오픈.
 - 좌우 스크롤 이슈 수정: 그리드 행에 `minmax(0,1fr)` + 각 패널에 `min-h-0 overflow-hidden`을 적용해 내용이 넘칠 때 마우스 휠 스크롤이 정상 동작하도록 처리됨.
 
@@ -307,6 +322,7 @@ React Flow 기반 인터랙티브 그래프. 핵심 상호작용:
 - Markdown 편집/미리보기 토글. `react-markdown` + `remark-gfm`으로 렌더링.
 
 **미리보기 탭**
+- 로컬 파일 링크(`kind: 'file'`)이고 지원 확장자면 **리치 미리보기**가 최상단에 표시됨(`FilePreview.tsx`) — 6.11절 참조.
 - favicon, thumbnail, 메타 제목/설명 표시. "메타데이터 다시 수집" 버튼(웹 링크만) — `metaFetch`를 재호출해 OG 정보와 본문 텍스트를 새로 가져옴.
 
 ### 6.5 링크/메모 추가 폼 (`LinkFormDialog`)
@@ -393,6 +409,33 @@ React Flow 기반 인터랙티브 그래프. 핵심 상호작용:
 
 **드래그 앤 드롭 규칙**: 탐색기에서 파일 1개를 놓으면 프리필된 폼이 열리고, 2개 이상을 놓으면 폼 없이 즉시 일괄 생성 후 첫 항목으로 포커스 이동. 앱 내부(폴더 이동, 링크→폴더/태그 드래그)는 커스텀 MIME 타입(`application/x-linkmap-*`)으로 구분되어 외부 파일 드롭 오버레이와 충돌하지 않는다.
 
+**파일 리치 미리보기 지원 확장자** (`previewKind.ts` 기준, `kind: 'file'` 링크만 대상)
+| 종류 | 확장자 | 렌더링 |
+|---|---|---|
+| PDF | `.pdf` | Chromium 내장 PDFium `<embed>` (창의 `webPreferences.plugins: true` 필요) |
+| 이미지 | `.png/.jpg/.jpeg/.gif/.webp/.bmp/.svg` | `<img>` (Blob URL) |
+| 마크다운 | `.md/.markdown` | `react-markdown` + `remark-gfm` (메모 탭과 동일 라이브러리 재사용) |
+| 텍스트/코드 | `.txt/.json/.ts/.py/...` 등 60여종 | `<pre>` |
+| Word | `.docx` | `mammoth.convertToHtml()` → HTML |
+| Excel | `.xlsx` | `xlsx`(SheetJS) 파싱 → 시트 탭 + 표(최대 500행) |
+
+옛 바이너리 포맷(`.doc/.xls`, OLE Compound File)은 지원 대상이 아니다. 원문은 `window.api.readBinary(path)` IPC로 Uint8Array를 받아 렌더러에서 종류별로 디코딩/파싱한다(확장자 화이트리스트 + 파일당 용량 제한 — 리치 바이너리 30MB, 텍스트류 5MB).
+
+### 6.12 폴더 가져오기 (Folder Import)
+컬렉션(트리)을 대체하지 않는 **추가** 기능 — 폴더를 골라 그 안의 파일들을 일괄로 링크화한다.
+- 사이드바 `📁 폴더 가져오기` 버튼 → `FolderImportDialog` → 네이티브 폴더 선택 다이얼로그.
+- 선택한 폴더 아래 모든 파일을 재귀 스캔(`.git`/`node_modules`/`.svn`/`.hg`/`__pycache__`/점폴더는 자동 제외, 최대 3000개, 넘으면 "일부만 표시" 안내).
+- 체크박스로 원하는 파일만 선택 → "N개 가져오기" → 각 파일이 `kind: 'file'` 링크로 생성되고, **폴더 이름을 딴 태그**(`tags.source_path` = 폴더 절대경로)가 모든 선택 파일에 부여된다.
+- 이미 같은 경로로 활성 링크가 있으면 새로 만들지 않고 재사용(중복 방지) — 결과 다이얼로그에 "새 링크 N개 생성, 기존 링크 N개 재사용"으로 표시.
+- 같은 폴더를 다시 가져오면 기존 폴더 태그를 재사용한다(`source_path` 완전일치로 탐색).
+
+### 6.13 폴더 동기화 (Folder Sync)
+6.12절로 만든 폴더 태그(`source_path` 보유)에 한해, 원본 폴더를 다시 스캔해 변경 사항을 반영한다.
+- 사이드바 태그 목록에서 폴더 태그에 hover하면 나타나는 🔄 아이콘 클릭.
+- 폴더에 **새로 추가된 파일** → 링크 생성 + 태그 부여.
+- 폴더에서 **사라진 파일**(그 태그가 추적 중이던 링크의 경로가 더 이상 존재하지 않음) → 해당 링크를 **휴지통으로 이동**(영구 삭제 아님).
+- 완료 시 "추가 N개, 휴지통 이동 N개" 알림. 변경이 없으면 알림 없음.
+
 ---
 
 ## 7. 완료된 기능 연혁 (요약)
@@ -408,6 +451,7 @@ React Flow 기반 인터랙티브 그래프. 핵심 상호작용:
 7. **그래프 상호작용**: 마우스 드래그로 관계 생성(onConnect), 메모 노드(kind=note), 다중 선택 드래그.
 8. **UX 다듬기**: 스크롤 버그 수정, 태그 추가 팝오버 클릭식 전환, 링크 추가 시 폴더 선택, 다중 선택(Shift/Ctrl), 정렬, 카드 2번째 줄 설명 표시, 패널 리사이즈, 편집 폼 리셋 버그 수정.
 9. **브랜딩**: 커스텀 앱 아이콘 적용(창/작업표시줄/패키징).
+10. **버전 최신화(신규 버전 기능 흡수)**: 별도로 개발된 신규 버전(`docs/10_VERSION_DIFF_ANALYSIS.md` 참조 — 그래프/관계/컬렉션을 제거하고 태그+폴더가져오기로 단순화한 버전)을 분석해, 이 프로젝트의 **그래프/관계/컬렉션은 그대로 유지**한 채 신규에만 있던 기능을 추가 이식: 파일 리치 미리보기(pdf/이미지/md/텍스트/docx/xlsx), 폴더 가져오기, 폴더 동기화, 태그 이름 계층 표현. 상세 결정 배경은 `docs/11_VERSION_UPGRADE_PLAN.md` 참조.
 
 각 기능의 커밋 이력은 `git log --oneline`으로 확인 가능하다.
 
@@ -417,7 +461,7 @@ React Flow 기반 인터랙티브 그래프. 핵심 상호작용:
 
 - **브라우저 익스텍션 없음** — 웹 페이지 저장은 드래그 앤 드롭 또는 수동 폼 입력만 가능.
 - **페이지 아카이빙/스냅샷 없음** — 원본 URL이 죽으면 (본문 색인이 있다면 텍스트는 검색되지만) 페이지 자체를 다시 볼 수는 없음.
-- **가져오기/내보내기(Import/Export) 없음** — Chrome/Raindrop 북마크 마이그레이션 불가, 백업은 SQLite 파일을 직접 복사해야 함.
+- **가져오기/내보내기는 로컬 폴더 한정** — 폴더 가져오기(6.12절)로 로컬 파일 일괄 등록은 가능하나, Chrome/Raindrop 등 **북마크 마이그레이션이나 내보내기(Export)는 여전히 없음**. 백업은 SQLite 파일을 직접 복사해야 함.
 - **동기화/멀티디바이스 없음** — 완전 로컬 단일 기기용.
 - **AI 관계 추천은 로컬 휴리스틱**이며 실제 LLM 기반 의미 분석은 아님.
 - **데드링크 체크 없음** — 저장된 URL의 생존 여부를 주기적으로 확인하지 않음.
@@ -431,6 +475,7 @@ React Flow 기반 인터랙티브 그래프. 핵심 상호작용:
 
 ```bash
 npm install      # @libsql/client 등 prebuilt 바이너리 — C++ 컴파일러 불필요
+                  # xlsx는 npm 레지스트리가 아닌 SheetJS CDN tgz URL 참조 — 설치 시 네트워크 필요
 npm run dev       # 개발 모드 (HMR)
 npm run build     # 프로덕션 번들 (out/)
 npm run typecheck # 메인+렌더러 타입 검사

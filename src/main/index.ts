@@ -26,7 +26,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false // preload가 require('electron')만 사용 — DB는 main에서만 접근
+      sandbox: false, // preload가 require('electron')만 사용 — DB는 main에서만 접근
+      plugins: true // Chromium 내장 PDFium 활성화 — 파일 미리보기 탭의 <embed type="application/pdf"> 렌더링에 필요
     }
   })
 

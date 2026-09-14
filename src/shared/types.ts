@@ -39,6 +39,8 @@ export interface Tag {
   id: string
   name: string
   color: string
+  /** 폴더 가져오기(P3)로 생성된 태그의 원본 폴더 절대경로. 수동 생성 태그는 null. */
+  sourcePath: string | null
 }
 
 export interface Relation {
@@ -104,6 +106,7 @@ export type UpdateLinkInput = Partial<
 export interface CreateTagInput {
   name: string
   color: string
+  sourcePath?: string | null
 }
 
 export interface CreateRelationInput {

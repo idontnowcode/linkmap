@@ -33,6 +33,7 @@ interface UiState {
   collectionFormParentId: string | null
   collectionPickerLinkId: string | null
   settingsOpen: boolean
+  folderImportOpen: boolean
 
   selectNode: (id: string | null, kind?: NodeKind | null) => void
   setTab: (tab: DetailTab) => void
@@ -53,6 +54,8 @@ interface UiState {
   closeCollectionPicker: () => void
   openSettings: () => void
   closeSettings: () => void
+  openFolderImport: () => void
+  closeFolderImport: () => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -77,6 +80,7 @@ export const useUiStore = create<UiState>((set) => ({
   collectionFormParentId: null,
   collectionPickerLinkId: null,
   settingsOpen: false,
+  folderImportOpen: false,
 
   selectNode: (id, kind = 'link') => set({ selectedNodeId: id, selectedKind: id ? kind : null }),
   setTab: (tab) => set({ activeTab: tab }),
@@ -100,5 +104,7 @@ export const useUiStore = create<UiState>((set) => ({
   openCollectionPicker: (linkId) => set({ collectionPickerLinkId: linkId }),
   closeCollectionPicker: () => set({ collectionPickerLinkId: null }),
   openSettings: () => set({ settingsOpen: true }),
-  closeSettings: () => set({ settingsOpen: false })
+  closeSettings: () => set({ settingsOpen: false }),
+  openFolderImport: () => set({ folderImportOpen: true }),
+  closeFolderImport: () => set({ folderImportOpen: false })
 }))
