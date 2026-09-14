@@ -7,6 +7,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import * as mammoth from 'mammoth'
 import * as XLSX from 'xlsx'
+import DOMPurify from 'dompurify'
 import type { Link } from '@shared/types'
 import { imageMimeFor, previewKindFor } from './previewKind'
 import { xlsxWorkbookToSheets, type XlsxSheetData } from './xlsxPreview'
@@ -57,7 +58,9 @@ export function FilePreview({ link }: { link: Link }): JSX.Element | null {
           if (kind === 'docx') {
             const result = await mammoth.convertToHtml({ arrayBuffer: r.data.slice().buffer })
             if (cancelled) return
-            setState({ status: 'docx', html: result.value })
+            // mammoth 출력은 원본 .docx의 하이퍼링크/스타일을 그대로 HTML로 옮기므로,
+            // 로컬 파일이라도 조작된 문서(예: javascript: href)를 열 수 있어 반드시 새니타이즈한다.
+            setState({ status: 'docx', html: DOMPurify.sanitize(result.value) })
           } else {
             const workbook = XLSX.read(r.data, { type: 'array' })
             if (cancelled) return
