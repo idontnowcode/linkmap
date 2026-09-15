@@ -8,7 +8,9 @@ import remarkGfm from 'remark-gfm'
 import * as mammoth from 'mammoth'
 import * as XLSX from 'xlsx'
 import DOMPurify from 'dompurify'
+import { ExternalLink } from 'lucide-react'
 import type { Link } from '@shared/types'
+import { openTarget } from '@/lib/openLink'
 import { imageMimeFor, previewKindFor } from './previewKind'
 import { xlsxWorkbookToSheets, type XlsxSheetData } from './xlsxPreview'
 import { XlsxTable } from './XlsxTable'
@@ -95,33 +97,50 @@ export function FilePreview({ link }: { link: Link }): JSX.Element | null {
 
   if (!kind) return null
 
+  // 예전엔 480px 고정이라 PDF/문서가 좁은 박스 안에 눌려 있었다("PDF가 너무 허접함"
+  // 피드백, 2026-09-16) — 뷰포트 기준 큰 높이로 펼치고, PDFium 내장 뷰어가 부족하게
+  // 느껴질 수 있는 문서류(pdf/docx/xlsx)는 OS 기본 앱으로 바로 열 수 있는 버튼을 곁들인다.
+  const showOpenExternally = kind === 'pdf' || kind === 'docx' || kind === 'xlsx'
+
   return (
     <div className="mb-4">
+      {showOpenExternally && (
+        <button
+          onClick={() => openTarget(link.kind, link.url)}
+          className="mb-2 flex items-center gap-1.5 text-sm text-ink-muted hover:text-brand"
+        >
+          <ExternalLink size={13} /> 기본 앱으로 열기
+        </button>
+      )}
       {state.status === 'loading' && <p className="text-sm text-ink-muted">불러오는 중…</p>}
       {state.status === 'error' && <p className="text-sm text-ink-muted">{state.message}</p>}
       {state.status === 'pdf' && (
-        <embed src={state.blobUrl} type="application/pdf" className="h-[480px] w-full rounded-md border border-line" />
+        <embed
+          src={state.blobUrl}
+          type="application/pdf"
+          className="h-[78vh] w-full rounded-md border border-line"
+        />
       )}
       {state.status === 'image' && (
         <img
           src={state.blobUrl}
           alt={link.title || link.url}
-          className="max-h-[480px] w-full rounded-md border border-line object-contain"
+          className="max-h-[78vh] w-full rounded-md border border-line object-contain"
         />
       )}
       {state.status === 'text' && kind === 'markdown' && (
-        <div className="markdown-body max-h-[480px] space-y-2 overflow-y-auto rounded-md border border-line p-3 text-body text-ink-strong">
+        <div className="markdown-body max-h-[78vh] space-y-2 overflow-y-auto rounded-md border border-line p-3 text-body text-ink-strong">
           <Markdown remarkPlugins={[remarkGfm]}>{state.text}</Markdown>
         </div>
       )}
       {state.status === 'text' && kind === 'text' && (
-        <pre className="max-h-[480px] overflow-auto rounded-md border border-line bg-list p-3 text-sm text-ink-strong">
+        <pre className="max-h-[78vh] overflow-auto rounded-md border border-line bg-list p-3 text-sm text-ink-strong">
           {state.text}
         </pre>
       )}
       {state.status === 'docx' && (
         <div
-          className="markdown-body max-h-[480px] space-y-2 overflow-y-auto rounded-md border border-line p-3 text-body text-ink-strong"
+          className="markdown-body max-h-[78vh] space-y-2 overflow-y-auto rounded-md border border-line p-3 text-body text-ink-strong"
           dangerouslySetInnerHTML={{ __html: state.html }}
         />
       )}

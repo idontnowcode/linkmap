@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ChevronDown,
   ChevronRight,
@@ -49,6 +49,18 @@ export function LeftRail(): JSX.Element {
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [syncingTagId, setSyncingTagId] = useState<string | null>(null)
   const [tagNodesCollapsed, setTagNodesCollapsed] = useState<Set<string>>(new Set())
+
+  // onDragLeave 하나로는 못 막는 경우(드래그 중 Esc, 창 밖으로 나갔다 놓임 등)까지 포함해
+  // 드래그가 어떻게 끝나든 dropTarget이 확실히 풀리도록 하는 안전망.
+  useEffect(() => {
+    const clear = (): void => setDropTarget(null)
+    window.addEventListener('dragend', clear)
+    window.addEventListener('drop', clear)
+    return () => {
+      window.removeEventListener('dragend', clear)
+      window.removeEventListener('drop', clear)
+    }
+  }, [])
 
   const tagTree = useMemo(() => buildTagTree(tags), [tags])
   const toggleTagNodeCollapse = (id: string): void =>
@@ -185,6 +197,12 @@ export function LeftRail(): JSX.Element {
                         e.stopPropagation()
                         e.dataTransfer.dropEffect = 'copy'
                         if (dropTarget !== t.id) setDropTarget(t.id)
+                      }}
+                      onDragLeave={(e) => {
+                        // 이 행 위를 그냥 지나쳐 다른 곳에 놓으면(=드롭 없이 벗어남)
+                        // dropTarget이 안 지워져 "클릭한 적 없는데 선택된 것처럼" 하이라이트가
+                        // 영구히 남던 버그 — 벗어날 때 반드시 초기화한다.
+                        if (dropTarget === t.id) setDropTarget(null)
                       }}
                       onDrop={(e) => {
                         e.preventDefault()

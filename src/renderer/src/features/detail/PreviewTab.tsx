@@ -25,13 +25,22 @@ export function PreviewTab({ link }: { link: LinkWithTags }): JSX.Element {
     }
   }
 
-  // 로컬 파일 링크 + 렌더링 가능한 확장자면 리치 미리보기를 상단에 우선 표시
+  // 로컬 파일 링크 + 렌더링 가능한 확장자면 리치 미리보기를 상단에 우선 표시.
+  // 이 경우 아래 썸네일/메타 제목·설명 필드는 web 링크(OG 수집) 전용이라 파일에는
+  // 의미가 없고(파일명을 "메타 제목"이라 되풀이 표시하는 등) 미리보기가 차지할 공간만
+  // 줄여 "PDF가 너무 작다"는 피드백(2026-09-16)의 원인이었다 — 파일 링크는 이 필드들을
+  // 건너뛰고 미리보기 하나에 전체 폭을 준다.
   const richPreviewKind = previewKindFor(link.kind, link.url)
+  if (richPreviewKind) {
+    return (
+      <div className="px-4 py-4">
+        <FilePreview link={link} />
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 py-4">
-      {richPreviewKind && <FilePreview link={link} />}
-
       {link.thumbnail ? (
         <img
           src={link.thumbnail}

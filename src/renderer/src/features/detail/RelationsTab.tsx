@@ -6,7 +6,12 @@ import { useUiStore } from '@/store/uiStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { edgeStyle } from '@/features/graph/edgeStyles'
 import { suggestRelations } from '@/lib/suggestRelations'
+import { cn } from '@/lib/utils'
 
+// 그래프 캔버스를 숨긴 뒤 "드래그로 관계 연결" 수단이 사라졌다는 피드백(2026-09-16)에 따라,
+// 링크 목록(LinkCard)이 이미 뿌리는 'application/x-linkmap-link' 드래그 데이터를 여기서 받아
+// RelationDialog를 target 미리 채운 채로 연다 — 그래프에서 드래그 연결했을 때와 동일한 흐름
+// (RelationDialog.tsx의 presetTargetId 분기를 그대로 재사용).
 export function RelationsTab({ link }: { link: LinkWithTags }): JSX.Element {
   const snapshot = useAppStore((s) => s.snapshot)
   const deleteRelation = useAppStore((s) => s.deleteRelation)
@@ -18,6 +23,19 @@ export function RelationsTab({ link }: { link: LinkWithTags }): JSX.Element {
 
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   useEffect(() => setDismissed(new Set()), [link.id])
+  const [dropActive, setDropActive] = useState(false)
+
+  const getDraggedLinkId = (e: React.DragEvent): string | null => {
+    const raw = e.dataTransfer.getData('application/x-linkmap-link')
+    if (!raw) return null
+    try {
+      const parsed = JSON.parse(raw)
+      const id = Array.isArray(parsed) ? parsed[0] : raw
+      return id && id !== link.id ? id : null
+    } catch {
+      return raw !== link.id ? raw : null
+    }
+  }
 
   const suggestions = useMemo(
     () => (aiSuggest ? suggestRelations(link.id, snapshot, dismissed) : []),
@@ -38,9 +56,27 @@ export function RelationsTab({ link }: { link: LinkWithTags }): JSX.Element {
     <div className="px-4 py-4">
       <button
         onClick={() => openRelationDialog(link.id, 'link')}
-        className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-line py-2 text-body text-ink-muted hover:border-brand hover:text-brand"
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes('application/x-linkmap-link')) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'link'
+          setDropActive(true)
+        }}
+        onDragLeave={() => setDropActive(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDropActive(false)
+          const targetId = getDraggedLinkId(e)
+          if (targetId) openRelationDialog(link.id, 'link', targetId)
+        }}
+        className={cn(
+          'mb-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed py-2 text-body transition-colors',
+          dropActive
+            ? 'border-brand bg-brand/10 text-brand'
+            : 'border-line text-ink-muted hover:border-brand hover:text-brand'
+        )}
       >
-        <Plus size={15} /> 관계 추가
+        <Plus size={15} /> {dropActive ? '여기에 놓아 관계 만들기' : '관계 추가 · 링크를 드래그해도 됩니다'}
       </button>
 
       {aiSuggest && suggestions.length > 0 && (
