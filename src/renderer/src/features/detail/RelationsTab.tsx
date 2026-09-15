@@ -53,22 +53,35 @@ export function RelationsTab({ link }: { link: LinkWithTags }): JSX.Element {
   )
 
   return (
-    <div className="px-4 py-4">
+    // 드롭 판정을 "관계 추가" 버튼(얇은 한 줄)에만 걸어두면 몇 픽셀만 벗어나도 그냥
+    // 아무 일도 안 일어나 "드래그해도 반응 없음"으로 보였다(2026-09-16) — 탭 전체를
+    // 드롭 영역으로 넓혀 목표 지점을 훨씬 관대하게 잡는다.
+    <div
+      className={cn(
+        'min-h-full rounded-md px-4 py-4 transition-colors',
+        dropActive && 'bg-brand/5 ring-1 ring-inset ring-brand/40'
+      )}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes('application/x-linkmap-link')) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'link'
+        if (!dropActive) setDropActive(true)
+      }}
+      onDragLeave={(e) => {
+        // relatedTarget이 여전히 이 컨테이너 안이면(자식 요소 간 이동) 무시 — 진짜로
+        // 컨테이너 밖으로 나갔을 때만 해제
+        if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return
+        setDropActive(false)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDropActive(false)
+        const targetId = getDraggedLinkId(e)
+        if (targetId) openRelationDialog(link.id, 'link', targetId)
+      }}
+    >
       <button
         onClick={() => openRelationDialog(link.id, 'link')}
-        onDragOver={(e) => {
-          if (!e.dataTransfer.types.includes('application/x-linkmap-link')) return
-          e.preventDefault()
-          e.dataTransfer.dropEffect = 'link'
-          setDropActive(true)
-        }}
-        onDragLeave={() => setDropActive(false)}
-        onDrop={(e) => {
-          e.preventDefault()
-          setDropActive(false)
-          const targetId = getDraggedLinkId(e)
-          if (targetId) openRelationDialog(link.id, 'link', targetId)
-        }}
         className={cn(
           'mb-3 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed py-2 text-body transition-colors',
           dropActive
@@ -76,7 +89,7 @@ export function RelationsTab({ link }: { link: LinkWithTags }): JSX.Element {
             : 'border-line text-ink-muted hover:border-brand hover:text-brand'
         )}
       >
-        <Plus size={15} /> {dropActive ? '여기에 놓아 관계 만들기' : '관계 추가 · 링크를 드래그해도 됩니다'}
+        <Plus size={15} /> {dropActive ? '여기에 놓아 관계 만들기' : '관계 추가 · 링크를 이 탭 어디든 드래그해도 됩니다'}
       </button>
 
       {aiSuggest && suggestions.length > 0 && (
