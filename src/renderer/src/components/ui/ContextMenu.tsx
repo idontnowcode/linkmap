@@ -21,10 +21,16 @@ export function ContextMenu({
 }): JSX.Element {
   useEffect(() => {
     const close = (): void => onClose()
-    window.addEventListener('click', close)
-    window.addEventListener('contextmenu', close)
-    window.addEventListener('wheel', close, { passive: true })
+    // 메뉴를 연 바로 그 클릭이 window까지 버블링되며 곧장 스스로 닫아버리는 경우가 있어
+    // (StrictMode 이중 커밋 등으로 effect 타이밍이 당겨질 때 발생) 리스너 등록을 한 틱
+    // 미룬다 — 열자마자 아무 반응이 없어 보이는 버그의 원인이었다.
+    const timer = setTimeout(() => {
+      window.addEventListener('click', close)
+      window.addEventListener('contextmenu', close)
+      window.addEventListener('wheel', close, { passive: true })
+    }, 0)
     return () => {
+      clearTimeout(timer)
       window.removeEventListener('click', close)
       window.removeEventListener('contextmenu', close)
       window.removeEventListener('wheel', close)

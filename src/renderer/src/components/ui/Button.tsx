@@ -20,7 +20,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       className={cn(
-        'inline-flex h-9 items-center justify-center gap-1.5 rounded-md px-3 text-body font-medium transition-colors disabled:opacity-50',
+        'inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-body font-medium transition-colors disabled:opacity-50',
         variants[variant],
         block && 'w-full',
         className

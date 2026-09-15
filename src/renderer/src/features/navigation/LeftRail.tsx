@@ -111,11 +111,14 @@ export function LeftRail(): JSX.Element {
         <Button block onClick={() => openLinkForm()}>
           <Plus size={16} /> 새 링크 추가
         </Button>
-        <div className="flex gap-2">
-          <Button block variant="secondary" onClick={() => openLinkForm({ kind: 'note' })}>
+        {/* 레일을 아주 좁게 줄이면 두 버튼이 한 줄에 다 안 들어가 글자가 세로로 깨져 보였다
+            — flex-wrap + min-width로 그 경우엔 통째로 다음 줄로 넘어가게(줄바꿈은 항상 버튼
+            단위로만) 한다. */}
+        <div className="flex flex-wrap gap-2">
+          <Button block variant="secondary" className="min-w-[92px] flex-1" onClick={() => openLinkForm({ kind: 'note' })}>
             <StickyNote size={15} /> 새 메모
           </Button>
-          <Button block variant="secondary" onClick={openTagForm}>
+          <Button block variant="secondary" className="min-w-[92px] flex-1" onClick={openTagForm}>
             <Plus size={15} /> 새 태그
           </Button>
         </div>
