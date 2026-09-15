@@ -5,19 +5,22 @@ import {
   Clock,
   ExternalLink,
   FolderMinus,
-  FolderPlus,
   Minus,
   MoreVertical,
   Pencil,
+  Plus,
   RotateCcw,
   Search,
-  Trash2
+  SlidersHorizontal,
+  Trash2,
+  X
 } from 'lucide-react'
 import type { LinkWithTags } from '@shared/types'
 import { useVisibleLinks } from './useVisibleLinks'
 import { LinkCard } from './LinkCard'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
+import { useSettingsStore } from '@/store/settingsStore'
 import { ContextMenu, type MenuItem } from '@/components/ui/ContextMenu'
 import { openTarget } from '@/lib/openLink'
 
@@ -25,7 +28,11 @@ export function LinkListColumn(): JSX.Element {
   const { links, viewTitle } = useVisibleLinks()
   const activeView = useUiStore((s) => s.activeView)
   const openLinkForm = useUiStore((s) => s.openLinkForm)
-  const openCollectionPicker = useUiStore((s) => s.openCollectionPicker)
+  const searchQuery = useUiStore((s) => s.searchQuery)
+  const setSearch = useUiStore((s) => s.setSearch)
+  const savedFilters = useSettingsStore((s) => s.savedFilters)
+  const addSavedFilter = useSettingsStore((s) => s.addSavedFilter)
+  const removeSavedFilter = useSettingsStore((s) => s.removeSavedFilter)
   const trashLink = useAppStore((s) => s.trashLink)
   const restoreLink = useAppStore((s) => s.restoreLink)
   const deleteLink = useAppStore((s) => s.deleteLink)
@@ -41,26 +48,28 @@ export function LinkListColumn(): JSX.Element {
   const contextTagId = activeView.kind === 'tag' ? activeView.id : null
   const contextColId = activeView.kind === 'collection' ? activeView.id : null
 
-  const [localQuery, setLocalQuery] = useState('')
   const [sortBy, setSortBy] = useState<'default' | 'name' | 'recent'>('default')
   const [anchor, setAnchor] = useState<string | null>(null)
   const [headerMenu, setHeaderMenu] = useState<{ x: number; y: number } | null>(null)
   const [linkMenu, setLinkMenu] = useState<{ x: number; y: number; link: LinkWithTags } | null>(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [filterOpen, setFilterOpen] = useState(false)
 
-  const searched = localQuery
-    ? links.filter(
-        (l) =>
-          l.title.toLowerCase().includes(localQuery.toLowerCase()) ||
-          l.url.toLowerCase().includes(localQuery.toLowerCase())
-      )
-    : links
-  const filtered = [...searched].sort((a, b) => {
+  // links는 useVisibleLinks()가 이미 uiStore.searchQuery(tag:/url:/memo: 필드 검색,
+  // 콤마=OR)를 적용해 반환한다 — 여기서는 정렬만 얹는다.
+  const filtered = [...links].sort((a, b) => {
     if (sortBy === 'name') return a.title.localeCompare(b.title)
     if (sortBy === 'recent') return b.createdAt - a.createdAt
     return 0
   })
+
+  const saveCurrentFilter = (): void => {
+    const q = searchQuery.trim()
+    if (!q) return
+    const name = prompt('필터 이름을 입력하세요', q.slice(0, 24))
+    if (name && name.trim()) addSavedFilter(name.trim(), q)
+  }
 
   const toggleSelect = (id: string): void =>
     setSelected((prev) => {
@@ -128,14 +137,10 @@ export function LinkListColumn(): JSX.Element {
   const linkMenuItems = (link: LinkWithTags): MenuItem[] => {
     const items: MenuItem[] = [
       { label: '열기', icon: <ExternalLink size={14} />, onClick: () => openTarget(link.kind, link.url) },
-      { label: '편집', icon: <Pencil size={14} />, onClick: () => openLinkForm(null, link.id) },
-      { label: '컬렉션에 추가', icon: <FolderPlus size={14} />, onClick: () => openCollectionPicker(link.id) }
+      { label: '편집', icon: <Pencil size={14} />, onClick: () => openLinkForm(null, link.id) }
     ]
     if (contextTagId) {
       items.push({ label: '이 태그에서 제외', icon: <Minus size={14} />, onClick: () => excludeOne(link) })
-    }
-    if (contextColId) {
-      items.push({ label: '이 폴더에서 제외', icon: <FolderMinus size={14} />, onClick: () => excludeOne(link) })
     }
     if (isTrash) {
       items.push({ label: '복원', icon: <RotateCcw size={14} />, onClick: () => void restoreLink(link.id) })
@@ -191,14 +196,74 @@ export function LinkListColumn(): JSX.Element {
 
       {/* In-context search */}
       <div className="px-3 pb-2">
-        <div className="flex items-center gap-2 rounded-md border border-line bg-list px-2.5">
-          <Search size={14} className="text-ink-muted" />
-          <input
-            value={localQuery}
-            onChange={(e) => setLocalQuery(e.target.value)}
-            placeholder="이 목록 내 검색"
-            className="h-8 w-full bg-transparent text-body text-ink-strong outline-none placeholder:text-ink-muted"
-          />
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 flex-1 items-center gap-2 rounded-md border border-line bg-list px-2.5">
+            <Search size={14} className="text-ink-muted" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="검색 · 공백=AND, ,=OR · tag:/url:/memo:"
+              className="h-full w-full bg-transparent text-body text-ink-strong outline-none placeholder:text-ink-muted"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearch('')} className="text-ink-muted hover:text-ink-strong" title="지우기">
+                <X size={13} />
+              </button>
+            )}
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setFilterOpen((v) => !v)}
+              className="flex h-8 items-center gap-1 rounded-md border border-line px-2 text-ink-muted hover:bg-list hover:text-ink-strong"
+              title="저장된 필터"
+            >
+              <SlidersHorizontal size={14} />
+            </button>
+            {filterOpen && (
+              <div
+                className="absolute right-0 top-9 z-20 w-64 rounded-md border border-line bg-white py-1 shadow-pop"
+                onMouseLeave={() => setFilterOpen(false)}
+              >
+                <div className="px-3 py-1 text-label uppercase text-ink-muted">저장된 필터</div>
+                {savedFilters.length === 0 && (
+                  <p className="px-3 py-2 text-sm text-ink-muted">저장된 필터가 없습니다</p>
+                )}
+                {savedFilters.map((f) => (
+                  <div key={f.id} className="group/f flex items-center hover:bg-list">
+                    <button
+                      onClick={() => {
+                        setSearch(f.query)
+                        setFilterOpen(false)
+                      }}
+                      className="min-w-0 flex-1 px-3 py-1.5 text-left"
+                    >
+                      <div className="truncate text-body text-ink-strong">{f.name}</div>
+                      <div className="truncate text-sm text-ink-muted">{f.query}</div>
+                    </button>
+                    <button
+                      onClick={() => removeSavedFilter(f.id)}
+                      className="px-2 text-ink-muted opacity-0 hover:text-red-600 group-hover/f:opacity-100"
+                      title="삭제"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                <div className="mt-1 border-t border-line pt-1">
+                  <button
+                    onClick={() => {
+                      saveCurrentFilter()
+                      setFilterOpen(false)
+                    }}
+                    disabled={!searchQuery.trim()}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-body text-brand hover:bg-list disabled:opacity-40"
+                  >
+                    <Plus size={14} /> 현재 검색을 필터로 저장
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -11,7 +11,6 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
   const toggleFavorite = useAppStore((s) => s.toggleFavorite)
   const updateLink = useAppStore((s) => s.updateLink)
   const openLinkForm = useUiStore((s) => s.openLinkForm)
-  const openCollectionPicker = useUiStore((s) => s.openCollectionPicker)
 
   const [tagMenuOpen, setTagMenuOpen] = useState(false)
   const tagMenuRef = useRef<HTMLDivElement>(null)
@@ -128,7 +127,6 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
       <div className="border-t border-line pt-3">
         <Label>빠른 작업</Label>
         <div className="space-y-1.5">
-          <QuickAction label="컬렉션에 추가" onClick={() => openCollectionPicker(link.id)} />
           <QuickAction label="편집" onClick={() => openLinkForm(null, link.id)} />
           <QuickAction label="새 링크 추가" onClick={() => openLinkForm()} />
         </div>

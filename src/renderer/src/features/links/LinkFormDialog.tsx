@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { File, Folder, FolderClosed, Globe, Plus, Sparkles } from 'lucide-react'
-import type { Collection, LinkKind } from '@shared/types'
+import { useEffect, useRef, useState } from 'react'
+import { File, Folder, Globe, Plus, Sparkles } from 'lucide-react'
+import type { LinkKind } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { Modal } from '@/components/ui/Modal'
@@ -9,6 +9,9 @@ import { Field, Input, Textarea } from '@/components/ui/Input'
 import { TAG_PALETTE } from '@/features/graph/edgeStyles'
 import { cn } from '@/lib/utils'
 
+// 컬렉션(폴더) 선택 필드는 UI에서만 비활성화했다 — LeftRail.tsx 상단 주석과 동일한 이유
+// (2026-09-15, 태그 하나로만 정리). 기존 링크의 collection_links 멤버십은 이 폼이 더 이상
+// 건드리지 않을 뿐, DB에는 그대로 남아 있다.
 export function LinkFormDialog(): JSX.Element {
   const open = useUiStore((s) => s.linkFormOpen)
   const prefill = useUiStore((s) => s.linkFormPrefill)
@@ -17,12 +20,9 @@ export function LinkFormDialog(): JSX.Element {
   const selectNode = useUiStore((s) => s.selectNode)
 
   const tags = useAppStore((s) => s.snapshot.tags)
-  const collections = useAppStore((s) => s.snapshot.collections)
   const createLink = useAppStore((s) => s.createLink)
   const updateLink = useAppStore((s) => s.updateLink)
   const createTag = useAppStore((s) => s.createTag)
-  const addLinkToCollection = useAppStore((s) => s.addLinkToCollection)
-  const removeLinkFromCollection = useAppStore((s) => s.removeLinkFromCollection)
 
   const [kind, setKind] = useState<LinkKind>('web')
   const [url, setUrl] = useState('')
@@ -33,7 +33,6 @@ export function LinkFormDialog(): JSX.Element {
   const [content, setContent] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const [tagIds, setTagIds] = useState<string[]>([])
-  const [collectionIds, setCollectionIds] = useState<string[]>([])
   const [addingTag, setAddingTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   // Enter가 입력창을 언마운트시키면서 blur가 추가로 발생해도 태그가 중복 생성되지 않도록 가드
@@ -60,12 +59,6 @@ export function LinkFormDialog(): JSX.Element {
       setContent(el.content)
       setNote(el.note ?? '')
       setTagIds(el.tagIds)
-      setCollectionIds(
-        useAppStore
-          .getState()
-          .snapshot.collectionLinks.filter((cl) => cl.linkId === editId)
-          .map((cl) => cl.collectionId)
-      )
     } else {
       setKind(prefill?.kind ?? 'web')
       setUrl(prefill?.url ?? '')
@@ -76,7 +69,6 @@ export function LinkFormDialog(): JSX.Element {
       setContent(prefill?.content ?? null)
       setNote(prefill?.note ?? '')
       setTagIds(prefill?.tagIds ?? [])
-      setCollectionIds([])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editId, prefill])
@@ -109,39 +101,6 @@ export function LinkFormDialog(): JSX.Element {
 
   const invalid = isNote ? !title.trim() : !url || !title
 
-  // 컬렉션 트리 순서(들여쓰기용)
-  const orderedCols = useMemo(() => {
-    const kids = new Map<string | null, Collection[]>()
-    for (const c of collections) {
-      const k = c.parentId ?? null
-      kids.set(k, [...(kids.get(k) ?? []), c])
-    }
-    const out: { c: Collection; depth: number }[] = []
-    const walk = (p: string | null, d: number): void => {
-      for (const c of kids.get(p) ?? []) {
-        out.push({ c, depth: d })
-        walk(c.id, d + 1)
-      }
-    }
-    walk(null, 0)
-    return out
-  }, [collections])
-
-  const toggleCol = (id: string): void =>
-    setCollectionIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
-
-  const syncCollections = async (linkId: string): Promise<void> => {
-    const current = new Set(
-      useAppStore
-        .getState()
-        .snapshot.collectionLinks.filter((cl) => cl.linkId === linkId)
-        .map((cl) => cl.collectionId)
-    )
-    const target = new Set(collectionIds)
-    for (const cid of target) if (!current.has(cid)) await addLinkToCollection(cid, linkId)
-    for (const cid of current) if (!target.has(cid)) await removeLinkFromCollection(cid, linkId)
-  }
-
   const submit = async (): Promise<void> => {
     if (invalid) return
     setSaving(true)
@@ -149,14 +108,12 @@ export function LinkFormDialog(): JSX.Element {
       const payload = isNote
         ? { kind, url: '', title, note, tagIds }
         : { kind, url, title, description, favicon, thumbnail, content, tagIds }
-      let linkId = editId
       if (editId) {
         await updateLink(editId, payload)
       } else {
-        linkId = await createLink(payload)
+        const linkId = await createLink(payload)
         selectNode(linkId, 'link')
       }
-      if (linkId) await syncCollections(linkId)
       close()
     } finally {
       setSaving(false)
@@ -328,29 +285,6 @@ export function LinkFormDialog(): JSX.Element {
           )}
         </div>
       </Field>
-
-      {collections.length > 0 && (
-        <Field label="폴더(컬렉션)">
-          <div className="max-h-32 overflow-y-auto rounded-md border border-line p-1">
-            {orderedCols.map(({ c, depth }) => (
-              <label
-                key={c.id}
-                style={{ paddingLeft: 6 + depth * 14 }}
-                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-sm hover:bg-list"
-              >
-                <input
-                  type="checkbox"
-                  checked={collectionIds.includes(c.id)}
-                  onChange={() => toggleCol(c.id)}
-                  className="h-3.5 w-3.5 accent-brand"
-                />
-                <FolderClosed size={13} className="text-ink-muted" />
-                <span className="truncate">{c.name}</span>
-              </label>
-            ))}
-          </div>
-        </Field>
-      )}
     </Modal>
   )
 }
