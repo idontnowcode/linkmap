@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, ExternalLink, Plus } from 'lucide-react'
+import { Check, Copy, ExternalLink, Plus, X } from 'lucide-react'
 import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
@@ -62,12 +62,17 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
           {assigned.map((t) => (
             <span
               key={t!.id}
-              onClick={() => removeTag(t!.id)}
-              title="클릭하여 제거"
-              className="cursor-pointer rounded-sm px-2 py-0.5 text-sm font-medium"
+              className="group/chip inline-flex items-center gap-1 rounded-sm py-0.5 pl-2 pr-1 text-sm font-medium"
               style={{ background: `${t!.color}1F`, color: t!.color }}
             >
               {t!.name}
+              <button
+                onClick={() => removeTag(t!.id)}
+                title="태그 제거"
+                className="grid h-3.5 w-3.5 place-items-center rounded-sm opacity-0 transition-opacity hover:bg-black/10 group-hover/chip:opacity-100"
+              >
+                <X size={11} />
+              </button>
             </span>
           ))}
           {available.length > 0 && (
