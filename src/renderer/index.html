@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/icon.png" />
-    <!-- object-src(embed/object)·img-src에 blob: 허용 필요 — 파일 미리보기(PDF/이미지)가
-         URL.createObjectURL()의 blob: URL을 쓰는데 'self'만으로는 CSP가 조용히 막아버려
-         PDF 뷰어가 빈 화면으로 보이던 버그(2026-09-16)의 원인이었다. -->
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: https: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'self' blob:"
-    />
+    <!-- CSP 메타 태그를 아예 뺐다(2026-09-16) — Electron 내장 PDF 뷰어(<embed type=
+         "application/pdf" src="blob:...">)는 일반 리소스 로드가 아니라 내부 프레임
+         네비게이션으로 처리돼, object-src에 blob:을 허용해도 ERR_BLOCKED_BY_CSP로
+         막히며 앱이 죽었다(main 프로세스 로그로 직접 확인). 참고한 Integrated_Mast/
+         Linkmap도 CSP를 아예 안 쓰고 있고, 이 앱은 로컬 데스크톱 전용(원격 콘텐츠
+         렌더링 없음)이라 contextIsolation+nodeIntegration:false만으로 충분하다고
+         판단. docx/markdown 렌더링은 여전히 DOMPurify로 새니타이즈한다. -->
     <title>LinkMap</title>
   </head>
   <body>
