@@ -16,6 +16,20 @@ export type RelationType =
 // 사용자가 선택 가능한 관계 타입(단순화). 'reference'/'supports'는 레거시 데이터 렌더용으로만 유지.
 export const RELATION_TYPES: RelationType[] = ['related', 'uses', 'part_of', 'custom']
 
+// 태그 색상 팔레트 — main(폴더 가져오기 자동 태그)과 renderer(TagFormDialog)가 함께 쓴다.
+// 새 태그가 항상 팔레트 첫 색(파랑)으로 만들어지던 버그(2026-09-17, "너무 파랑파랑해")로
+// 색이 다양해지려면 두 생성 경로 모두 이 배열을 기존 태그 개수만큼 회전시켜야 한다.
+export const TAG_PALETTE = [
+  '#3B82F6',
+  '#22C55E',
+  '#F97316',
+  '#A855F7',
+  '#EAB308',
+  '#14B8A6',
+  '#EF4444',
+  '#0EA5E9'
+]
+
 export interface Link {
   id: string
   kind: LinkKind

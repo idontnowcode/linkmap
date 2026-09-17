@@ -11,6 +11,7 @@ import type {
   FolderSyncPreviewResult,
   FolderSyncResult
 } from '@shared/ipc'
+import { TAG_PALETTE } from '@shared/types'
 import { linkRepo, linkTagRepo, tagRepo } from '../repositories'
 
 // 흔히 수천~수만 개 파일을 갖는 폴더(node_modules, .git 등)를 실수로 고르는 경우를 대비한
@@ -60,9 +61,13 @@ export async function listFolderTree(rootPath: string): Promise<FolderListResult
 async function ensureFolderTag(rootPath: string) {
   const existing = await tagRepo.findBySourcePath(rootPath)
   if (existing) return existing
+  // 고정 파랑이면 폴더 태그를 여러 개 만들수록 전부 같은 색이 된다("너무 파랑파랑해",
+  // 2026-09-17) — 기존 태그 개수만큼 팔레트를 돌려 수동 생성 태그(TagFormDialog)와
+  // 같은 방식으로 다양하게 배정한다.
+  const count = await tagRepo.count()
   return tagRepo.create({
     name: basename(rootPath) || rootPath,
-    color: '#3B82F6',
+    color: TAG_PALETTE[count % TAG_PALETTE.length],
     sourcePath: rootPath
   })
 }

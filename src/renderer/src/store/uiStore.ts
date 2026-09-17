@@ -26,6 +26,7 @@ interface UiState {
   linkFormPrefill: Partial<CreateLinkInput> | null
   linkFormEditId: string | null
   tagFormOpen: boolean
+  tagFormEditId: string | null
   relationSourceId: string | null
   relationSourceKind: NodeKind | null
   relationTargetId: string | null
@@ -46,7 +47,8 @@ interface UiState {
 
   openLinkForm: (prefill?: Partial<CreateLinkInput> | null, editId?: string | null) => void
   closeLinkForm: () => void
-  openTagForm: () => void
+  /** editId를 주면 해당 태그를 수정하는 모드로 연다 */
+  openTagForm: (editId?: string | null) => void
   closeTagForm: () => void
   openRelationDialog: (sourceId: string, sourceKind: NodeKind, targetId?: string | null) => void
   closeRelationDialog: () => void
@@ -77,6 +79,7 @@ export const useUiStore = create<UiState>((set) => ({
   linkFormPrefill: null,
   linkFormEditId: null,
   tagFormOpen: false,
+  tagFormEditId: null,
   relationSourceId: null,
   relationSourceKind: null,
   relationTargetId: null,
@@ -97,8 +100,8 @@ export const useUiStore = create<UiState>((set) => ({
   openLinkForm: (prefill = null, editId = null) =>
     set({ linkFormOpen: true, linkFormPrefill: prefill, linkFormEditId: editId }),
   closeLinkForm: () => set({ linkFormOpen: false, linkFormPrefill: null, linkFormEditId: null }),
-  openTagForm: () => set({ tagFormOpen: true }),
-  closeTagForm: () => set({ tagFormOpen: false }),
+  openTagForm: (editId = null) => set({ tagFormOpen: true, tagFormEditId: editId }),
+  closeTagForm: () => set({ tagFormOpen: false, tagFormEditId: null }),
   openRelationDialog: (sourceId, sourceKind, targetId = null) =>
     set({ relationSourceId: sourceId, relationSourceKind: sourceKind, relationTargetId: targetId }),
   closeRelationDialog: () =>

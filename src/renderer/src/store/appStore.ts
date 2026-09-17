@@ -29,6 +29,7 @@ interface AppState {
   bulkDelete: (ids: string[]) => Promise<void>
 
   createTag: (input: CreateTagInput) => Promise<string>
+  updateTag: (id: string, patch: Partial<CreateTagInput>) => Promise<void>
   deleteTag: (id: string) => Promise<void>
 
   createRelation: (input: CreateRelationInput) => Promise<void>
@@ -132,6 +133,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const tag: Tag = await window.api.createTag(input)
     await get().refresh()
     return tag.id
+  },
+  updateTag: async (id, patch) => {
+    await window.api.updateTag(id, patch)
+    await get().refresh()
   },
   deleteTag: async (id) => {
     await window.api.deleteTag(id)

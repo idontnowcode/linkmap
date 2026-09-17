@@ -201,6 +201,11 @@ export const tagRepo = {
   async findBySourcePath(sourcePath: string): Promise<Tag | null> {
     const row = await getDb().select().from(tags).where(eq(tags.sourcePath, sourcePath)).get()
     return row ?? null
+  },
+  /** 새 태그 기본 색상을 TAG_PALETTE에서 순환시키기 위한 현재 태그 총 개수 */
+  async count(): Promise<number> {
+    const rows = await getDb().select({ id: tags.id }).from(tags).all()
+    return rows.length
   }
 }
 

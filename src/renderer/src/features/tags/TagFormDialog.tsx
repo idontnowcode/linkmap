@@ -9,25 +9,38 @@ import { cn } from '@/lib/utils'
 
 export function TagFormDialog(): JSX.Element {
   const open = useUiStore((s) => s.tagFormOpen)
+  const editId = useUiStore((s) => s.tagFormEditId)
   const close = useUiStore((s) => s.closeTagForm)
   const createTag = useAppStore((s) => s.createTag)
+  const updateTag = useAppStore((s) => s.updateTag)
+  const tags = useAppStore((s) => s.snapshot.tags)
 
   const [name, setName] = useState('')
   const [color, setColor] = useState(TAG_PALETTE[0])
   const [saving, setSaving] = useState(false)
 
+  // 항상 팔레트 첫 색(파랑)으로 시작하면 색상을 직접 고르지 않는 한 태그가 전부 파랑으로
+  // 쌓인다("너무 파랑파랑해" 피드백, 2026-09-17) — 새 태그는 기존 태그 개수만큼 팔레트를
+  // 돌려 기본값을 다양하게 준다. 수정 모드에서는 그 태그의 현재 이름·색으로 채운다.
   useEffect(() => {
-    if (open) {
+    if (!open) return
+    const editing = editId ? tags.find((t) => t.id === editId) : null
+    if (editing) {
+      setName(editing.name)
+      setColor(editing.color)
+    } else {
       setName('')
-      setColor(TAG_PALETTE[0])
+      setColor(TAG_PALETTE[tags.length % TAG_PALETTE.length])
     }
-  }, [open])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editId])
 
   const submit = async (): Promise<void> => {
     if (!name.trim()) return
     setSaving(true)
     try {
-      await createTag({ name: name.trim(), color })
+      if (editId) await updateTag(editId, { name: name.trim(), color })
+      else await createTag({ name: name.trim(), color })
       close()
     } finally {
       setSaving(false)
@@ -38,7 +51,7 @@ export function TagFormDialog(): JSX.Element {
     <Modal
       open={open}
       onClose={close}
-      title="새 태그 추가"
+      title={editId ? '태그 편집' : '새 태그 추가'}
       width={400}
       footer={
         <>
@@ -46,7 +59,7 @@ export function TagFormDialog(): JSX.Element {
             취소
           </Button>
           <Button onClick={() => void submit()} disabled={!name.trim() || saving}>
-            추가
+            {editId ? '저장' : '추가'}
           </Button>
         </>
       }

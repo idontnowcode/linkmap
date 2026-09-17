@@ -3,8 +3,10 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Folder,
   FolderInput,
   Link2,
+  Pencil,
   Plus,
   RefreshCw,
   Settings,
@@ -114,7 +116,7 @@ export function LeftRail(): JSX.Element {
           <Button block variant="secondary" className="min-w-[92px] flex-1" onClick={() => openLinkForm({ kind: 'note' })}>
             <StickyNote size={15} /> 새 메모
           </Button>
-          <Button block variant="secondary" className="min-w-[92px] flex-1" onClick={openTagForm}>
+          <Button block variant="secondary" className="min-w-[92px] flex-1" onClick={() => openTagForm()}>
             <Plus size={15} /> 새 태그
           </Button>
         </div>
@@ -150,7 +152,7 @@ export function LeftRail(): JSX.Element {
         <div>
           <SectionLabel
             label="태그"
-            onAdd={openTagForm}
+            onAdd={() => openTagForm()}
             collapsed={tagsCollapsed}
             onToggle={() => setTagsCollapsed((v) => !v)}
           />
@@ -219,7 +221,15 @@ export function LeftRail(): JSX.Element {
                         <span className="w-3 shrink-0" />
                       )}
                       <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
-                      <span className="flex-1 truncate text-left">{leafNameOf(node)}</span>
+                      {isFolderTag && (
+                        <Folder size={11} className="shrink-0 text-ink-dark-muted" aria-hidden="true" />
+                      )}
+                      <span
+                        className="flex-1 truncate text-left"
+                        title={isFolderTag ? `동기화 폴더 · ${t.sourcePath}` : undefined}
+                      >
+                        {leafNameOf(node)}
+                      </span>
                       {isFolderTag && (
                         <button
                           onClick={(e) => {
@@ -263,6 +273,11 @@ export function LeftRail(): JSX.Element {
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
+            {
+              label: '이름·색상 편집',
+              icon: <Pencil size={14} />,
+              onClick: () => openTagForm(menu.id)
+            },
             {
               label: '태그 삭제',
               icon: <Trash2 size={14} />,

@@ -1,4 +1,5 @@
 import type { RelationType } from '@shared/types'
+export { TAG_PALETTE } from '@shared/types'
 
 export interface EdgeStyle {
   color: string
@@ -18,15 +19,3 @@ export const EDGE_STYLES: Record<RelationType, EdgeStyle> = {
 export function edgeStyle(type: RelationType): EdgeStyle {
   return EDGE_STYLES[type] ?? EDGE_STYLES.custom
 }
-
-/** 태그 색상 팔레트 (TagForm 색상 선택용) */
-export const TAG_PALETTE = [
-  '#3B82F6',
-  '#22C55E',
-  '#F97316',
-  '#A855F7',
-  '#EAB308',
-  '#14B8A6',
-  '#EF4444',
-  '#0EA5E9'
-]
