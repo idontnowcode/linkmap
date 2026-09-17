@@ -1,16 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, ExternalLink, Plus, X } from 'lucide-react'
+import { Check, Copy, ExternalLink, Maximize2, Plus, X } from 'lucide-react'
 import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { formatDate } from '@/lib/utils'
 import { openTarget } from '@/lib/openLink'
+import { FilePreview } from './FilePreview'
+import { previewKindFor } from './previewKind'
 
 export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
   const tags = useAppStore((s) => s.snapshot.tags)
   const toggleFavorite = useAppStore((s) => s.toggleFavorite)
   const updateLink = useAppStore((s) => s.updateLink)
   const openLinkForm = useUiStore((s) => s.openLinkForm)
+  const setTab = useUiStore((s) => s.setTab)
+  // 상세 정보 탭 안에서도 미리보기가 보였으면 좋겠다는 피드백(2026-09-17) — "미리보기" 탭까지
+  // 옮겨가지 않아도 바로 보이게 작은 크기로 끼워 넣는다. 전체 크기는 "미리보기" 탭 그대로.
+  const richPreviewKind = previewKindFor(link.kind, link.url)
 
   const [tagMenuOpen, setTagMenuOpen] = useState(false)
   const tagMenuRef = useRef<HTMLDivElement>(null)
@@ -37,6 +43,23 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
   return (
     <div className="px-4 py-4 text-body">
       <Row label="제목" value={link.title} />
+
+      {richPreviewKind && (
+        <div className="mb-3">
+          <div className="mb-1 flex items-center justify-between">
+            <Label inline>미리보기</Label>
+            <button
+              onClick={() => setTab('preview')}
+              title="미리보기 탭에서 크게 보기"
+              className="flex items-center gap-1 text-sm text-ink-muted hover:text-brand"
+            >
+              <Maximize2 size={12} /> 크게 보기
+            </button>
+          </div>
+          <FilePreview link={link} compact />
+        </div>
+      )}
+
       {link.kind !== 'note' && (
         <div className="mb-3">
           <Label>{link.kind === 'web' ? 'URL' : '경로'}</Label>

@@ -11,6 +11,7 @@ import DOMPurify from 'dompurify'
 import { ExternalLink } from 'lucide-react'
 import type { Link } from '@shared/types'
 import { openTarget } from '@/lib/openLink'
+import { cn } from '@/lib/utils'
 import { imageMimeFor, previewKindFor } from './previewKind'
 import { xlsxWorkbookToSheets, type XlsxSheetData } from './xlsxPreview'
 import { XlsxTable } from './XlsxTable'
@@ -24,8 +25,13 @@ type Loaded =
   | { status: 'docx'; html: string }
   | { status: 'xlsx'; sheetNames: string[]; sheets: Record<string, XlsxSheetData> }
 
-/** kind==='file'이고 previewKindFor가 대상이 아니면 null을 반환 — 그 경우 PreviewTab이 기존 UI로 대체 */
-export function FilePreview({ link }: { link: Link }): JSX.Element | null {
+/**
+ * kind==='file'이고 previewKindFor가 대상이 아니면 null을 반환 — 그 경우 PreviewTab이 기존 UI로 대체.
+ * compact=true면 상세 정보 탭 안에 끼워 넣을 수 있도록 높이를 줄인다("상세정보에서도 미리보기가
+ * 보였으면 좋겠다" 피드백, 2026-09-17) — 미리보기 탭 전용의 78vh는 다른 필드들과 한 화면에
+ * 같이 있기엔 너무 크다.
+ */
+export function FilePreview({ link, compact = false }: { link: Link; compact?: boolean }): JSX.Element | null {
   const kind = previewKindFor(link.kind, link.url)
   const [state, setState] = useState<Loaded>({ status: 'loading' })
 
@@ -101,6 +107,8 @@ export function FilePreview({ link }: { link: Link }): JSX.Element | null {
   // 피드백, 2026-09-16) — 뷰포트 기준 큰 높이로 펼치고, PDFium 내장 뷰어가 부족하게
   // 느껴질 수 있는 문서류(pdf/docx/xlsx)는 OS 기본 앱으로 바로 열 수 있는 버튼을 곁들인다.
   const showOpenExternally = kind === 'pdf' || kind === 'docx' || kind === 'xlsx'
+  const boxHeight = compact ? 'h-[280px]' : 'h-[78vh]'
+  const maxBoxHeight = compact ? 'max-h-[280px]' : 'max-h-[78vh]'
 
   return (
     <div className="mb-4">
@@ -118,29 +126,42 @@ export function FilePreview({ link }: { link: Link }): JSX.Element | null {
         <embed
           src={state.blobUrl}
           type="application/pdf"
-          className="h-[78vh] w-full rounded-md border border-line"
+          className={cn(boxHeight, 'w-full rounded-md border border-line')}
         />
       )}
       {state.status === 'image' && (
         <img
           src={state.blobUrl}
           alt={link.title || link.url}
-          className="max-h-[78vh] w-full rounded-md border border-line object-contain"
+          className={cn(maxBoxHeight, 'w-full rounded-md border border-line object-contain')}
         />
       )}
       {state.status === 'text' && kind === 'markdown' && (
-        <div className="markdown-body max-h-[78vh] space-y-2 overflow-y-auto rounded-md border border-line p-3 text-body text-ink-strong">
+        <div
+          className={cn(
+            maxBoxHeight,
+            'markdown-body space-y-2 overflow-y-auto rounded-md border border-line p-3 text-body text-ink-strong'
+          )}
+        >
           <Markdown remarkPlugins={[remarkGfm]}>{state.text}</Markdown>
         </div>
       )}
       {state.status === 'text' && kind === 'text' && (
-        <pre className="max-h-[78vh] overflow-auto rounded-md border border-line bg-list p-3 text-sm text-ink-strong">
+        <pre
+          className={cn(
+            maxBoxHeight,
+            'overflow-auto rounded-md border border-line bg-list p-3 text-sm text-ink-strong'
+          )}
+        >
           {state.text}
         </pre>
       )}
       {state.status === 'docx' && (
         <div
-          className="markdown-body max-h-[78vh] space-y-2 overflow-y-auto rounded-md border border-line p-3 text-body text-ink-strong"
+          className={cn(
+            maxBoxHeight,
+            'markdown-body space-y-2 overflow-y-auto rounded-md border border-line p-3 text-body text-ink-strong'
+          )}
           dangerouslySetInnerHTML={{ __html: state.html }}
         />
       )}
