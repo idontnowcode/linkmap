@@ -27,6 +27,10 @@ import { buildTagTree, isHiddenByCollapse, leafNameOf } from './tagTree'
 // 액션(collections, deleteCollection, moveCollection, bulkAddToCollection 등)과
 // features/collections/, features/graph/nodes/CollectionNode.tsx는 그대로 남겨뒀다 —
 // 이 레일에서 진입점(폴더 트리, "컬렉션에 추가" 메뉴)만 없앤 것이라 재활성화가 쉽다.
+//
+// 폴더 가져오기로 생긴 태그(sourcePath 보유)는 2026-09-17부터 "폴더" 섹션으로 완전히
+// 분리했다 — 아이콘 하나로 구분하는 걸로는 부족하다는 피드백. 여전히 데이터상으로는
+// 그냥 태그이고(tags 테이블 그대로), 화면에 두 그룹으로 나눠 보여주기만 한다.
 function sameView(a: ActiveView, b: ActiveView): boolean {
   return a.kind === b.kind && a.id === b.id
 }
@@ -48,6 +52,7 @@ export function LeftRail(): JSX.Element {
 
   const [menu, setMenu] = useState<RailMenu | null>(null)
   const [tagsCollapsed, setTagsCollapsed] = useState(false)
+  const [foldersCollapsed, setFoldersCollapsed] = useState(false)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [tagNodesCollapsed, setTagNodesCollapsed] = useState<Set<string>>(new Set())
 
@@ -63,7 +68,10 @@ export function LeftRail(): JSX.Element {
     }
   }, [])
 
-  const tagTree = useMemo(() => buildTagTree(tags), [tags])
+  const folderTags = useMemo(() => tags.filter((t) => t.sourcePath), [tags])
+  const regularTags = useMemo(() => tags.filter((t) => !t.sourcePath), [tags])
+  const folderTagTree = useMemo(() => buildTagTree(folderTags), [folderTags])
+  const tagTree = useMemo(() => buildTagTree(regularTags), [regularTags])
   const toggleTagNodeCollapse = (id: string): void =>
     setTagNodesCollapsed((prev) => {
       const n = new Set(prev)
@@ -87,6 +95,97 @@ export function LeftRail(): JSX.Element {
     } catch {
       return [raw]
     }
+  }
+
+  // "폴더" 섹션(폴더 가져오기로 생긴 태그)과 "태그" 섹션(그 외 일반 태그) 둘 다 같은 행
+  // 모양을 쓴다 — 태그 트리 렌더링을 한 곳에 모아 중복을 피한다. treeNodes는 그 섹션
+  // 자신의 트리여야 한다(isHiddenByCollapse가 조상을 그 안에서 찾기 때문).
+  const renderTagRow = (node: (typeof tagTree)[number], treeNodes: typeof tagTree): JSX.Element | null => {
+    if (isHiddenByCollapse(node, treeNodes, tagNodesCollapsed)) return null
+    const t = node.tag
+    const active = sameView(activeView, { kind: 'tag', id: t.id })
+    const isFolderTag = !!t.sourcePath
+    const isCollapsed = tagNodesCollapsed.has(t.id)
+    return (
+      <div
+        key={t.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => setView({ kind: 'tag', id: t.id })}
+        onKeyDown={(e) => e.key === 'Enter' && setView({ kind: 'tag', id: t.id })}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setMenu({ x: e.clientX, y: e.clientY, kind: 'tag', id: t.id, name: t.name })
+        }}
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes('application/x-linkmap-link')) return
+          e.preventDefault()
+          e.stopPropagation()
+          e.dataTransfer.dropEffect = 'copy'
+          if (dropTarget !== t.id) setDropTarget(t.id)
+        }}
+        onDragLeave={(e) => {
+          // 이 행 위를 그냥 지나쳐 다른 곳에 놓으면(=드롭 없이 벗어남)
+          // dropTarget이 안 지워져 "클릭한 적 없는데 선택된 것처럼" 하이라이트가
+          // 영구히 남던 버그 — 벗어날 때 반드시 초기화한다.
+          if (dropTarget === t.id) setDropTarget(null)
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const linkIds = getLinkIds(e)
+          if (linkIds.length) void bulkAddTag(linkIds, t.id)
+          setDropTarget(null)
+        }}
+        style={{ paddingLeft: 10 + node.depth * 14 }}
+        className={cn(
+          'group/tag flex w-full cursor-pointer items-center gap-2 rounded-md py-1.5 pr-2.5 text-body',
+          dropTarget === t.id
+            ? 'bg-brand/30 ring-1 ring-brand'
+            : active
+              ? 'bg-rail-active text-white'
+              : 'text-ink-dark hover:bg-rail-hover'
+        )}
+      >
+        {node.hasChildren ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleTagNodeCollapse(t.id)
+            }}
+            className="shrink-0 text-ink-dark-muted hover:text-white"
+          >
+            {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+          </button>
+        ) : (
+          <span className="w-3 shrink-0" />
+        )}
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
+        {isFolderTag && <Folder size={11} className="shrink-0 text-ink-dark-muted" aria-hidden="true" />}
+        <span
+          className="flex-1 truncate text-left"
+          title={isFolderTag ? `동기화 폴더 · ${t.sourcePath}` : undefined}
+        >
+          {leafNameOf(node)}
+        </span>
+        {isFolderTag && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              openFolderSync(t.id)
+            }}
+            title="폴더 동기화 (변경 사항 미리보기)"
+            className="hidden shrink-0 text-ink-dark-muted hover:text-white group-hover/tag:block"
+          >
+            <RefreshCw size={13} />
+          </button>
+        )}
+        <span className={cn('text-sm text-ink-dark-muted', isFolderTag && 'group-hover/tag:hidden')}>
+          {counts.byTag[t.id] ?? 0}
+        </span>
+      </div>
+    )
   }
 
   const smartViews = [
@@ -148,6 +247,22 @@ export function LeftRail(): JSX.Element {
           })}
         </nav>
 
+        {/* 폴더(동기화 대상) — 폴더 가져오기로 생긴 태그만 별도 분리 */}
+        <div className="mb-4">
+          <SectionLabel
+            label="폴더"
+            onAdd={openFolderImport}
+            collapsed={foldersCollapsed}
+            onToggle={() => setFoldersCollapsed((v) => !v)}
+          />
+          {!foldersCollapsed && (
+            <div className="space-y-0.5">
+              {folderTagTree.map((node) => renderTagRow(node, folderTagTree))}
+              {folderTags.length === 0 && <Empty>가져온 폴더 없음</Empty>}
+            </div>
+          )}
+        </div>
+
         {/* Tags */}
         <div>
           <SectionLabel
@@ -158,102 +273,8 @@ export function LeftRail(): JSX.Element {
           />
           {!tagsCollapsed && (
             <div className="space-y-0.5">
-              {tagTree
-                .filter((node) => !isHiddenByCollapse(node, tagTree, tagNodesCollapsed))
-                .map((node) => {
-                  const t = node.tag
-                  const active = sameView(activeView, { kind: 'tag', id: t.id })
-                  const isFolderTag = !!t.sourcePath
-                  const isCollapsed = tagNodesCollapsed.has(t.id)
-                  return (
-                    <div
-                      key={t.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setView({ kind: 'tag', id: t.id })}
-                      onKeyDown={(e) => e.key === 'Enter' && setView({ kind: 'tag', id: t.id })}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setMenu({ x: e.clientX, y: e.clientY, kind: 'tag', id: t.id, name: t.name })
-                      }}
-                      onDragOver={(e) => {
-                        if (!e.dataTransfer.types.includes('application/x-linkmap-link')) return
-                        e.preventDefault()
-                        e.stopPropagation()
-                        e.dataTransfer.dropEffect = 'copy'
-                        if (dropTarget !== t.id) setDropTarget(t.id)
-                      }}
-                      onDragLeave={(e) => {
-                        // 이 행 위를 그냥 지나쳐 다른 곳에 놓으면(=드롭 없이 벗어남)
-                        // dropTarget이 안 지워져 "클릭한 적 없는데 선택된 것처럼" 하이라이트가
-                        // 영구히 남던 버그 — 벗어날 때 반드시 초기화한다.
-                        if (dropTarget === t.id) setDropTarget(null)
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        const linkIds = getLinkIds(e)
-                        if (linkIds.length) void bulkAddTag(linkIds, t.id)
-                        setDropTarget(null)
-                      }}
-                      style={{ paddingLeft: 10 + node.depth * 14 }}
-                      className={cn(
-                        'group/tag flex w-full cursor-pointer items-center gap-2 rounded-md py-1.5 pr-2.5 text-body',
-                        dropTarget === t.id
-                          ? 'bg-brand/30 ring-1 ring-brand'
-                          : active
-                            ? 'bg-rail-active text-white'
-                            : 'text-ink-dark hover:bg-rail-hover'
-                      )}
-                    >
-                      {node.hasChildren ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleTagNodeCollapse(t.id)
-                          }}
-                          className="shrink-0 text-ink-dark-muted hover:text-white"
-                        >
-                          {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-                        </button>
-                      ) : (
-                        <span className="w-3 shrink-0" />
-                      )}
-                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: t.color }} />
-                      {isFolderTag && (
-                        <Folder size={11} className="shrink-0 text-ink-dark-muted" aria-hidden="true" />
-                      )}
-                      <span
-                        className="flex-1 truncate text-left"
-                        title={isFolderTag ? `동기화 폴더 · ${t.sourcePath}` : undefined}
-                      >
-                        {leafNameOf(node)}
-                      </span>
-                      {isFolderTag && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openFolderSync(t.id)
-                          }}
-                          title="폴더 동기화 (변경 사항 미리보기)"
-                          className="hidden shrink-0 text-ink-dark-muted hover:text-white group-hover/tag:block"
-                        >
-                          <RefreshCw size={13} />
-                        </button>
-                      )}
-                      <span
-                        className={cn(
-                          'text-sm text-ink-dark-muted',
-                          isFolderTag && 'group-hover/tag:hidden'
-                        )}
-                      >
-                        {counts.byTag[t.id] ?? 0}
-                      </span>
-                    </div>
-                  )
-                })}
-              {tags.length === 0 && <Empty>태그 없음</Empty>}
+              {tagTree.map((node) => renderTagRow(node, tagTree))}
+              {regularTags.length === 0 && <Empty>태그 없음</Empty>}
             </div>
           )}
         </div>
