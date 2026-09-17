@@ -13,6 +13,7 @@ import type {
 } from '@shared/ipc'
 import { TAG_PALETTE, type Tag } from '@shared/types'
 import { folderExclusionRepo, linkRepo, linkTagRepo, tagRepo } from '../repositories'
+import { readTextFileContent } from './fileContent'
 
 // 흔히 수천~수만 개 파일을 갖는 폴더(node_modules, .git 등)를 실수로 고르는 경우를 대비한
 // 안전장치 — 넘으면 결과를 잘라내고 truncated:true를 돌려준다.
@@ -109,6 +110,22 @@ async function ensureFolderTagChain(
   return chain
 }
 
+/**
+ * 대량 파일을 가져올 때 전문검색용 본문(텍스트/코드 + pdf/docx/xlsx)을 즉시 다 추출하면
+ * 느려질 수 있어(pdf 파싱은 특히) IPC 응답 이후 백그라운드에서 순차적으로 채운다 —
+ * UI를 블로킹하지 않고, 각 파일 처리 직후 바로 linkRepo.update로 반영한다.
+ */
+async function backfillContentInBackground(items: { id: string; absolutePath: string }[]): Promise<void> {
+  for (const { id, absolutePath } of items) {
+    try {
+      const content = await readTextFileContent(absolutePath)
+      if (content) await linkRepo.update(id, { content })
+    } catch {
+      /* best-effort — 실패한 파일은 건너뛰고 계속 진행 */
+    }
+  }
+}
+
 /** relativePath(파일)의 디렉터리 부분을 "/"·"\\" 무관하게 세그먼트 배열로 쪼갠다. */
 function dirSegmentsOf(relativeFilePath: string): string[] {
   const segments = relativeFilePath.split(/[\\/]/).filter(Boolean)
@@ -143,6 +160,7 @@ export async function importFolderFiles(
   let created = 0
   let alreadyLinked = 0
   let rootTag: Tag | null = null
+  const newlyCreated: { id: string; absolutePath: string }[] = []
 
   for (const relativePath of selectedRelativePaths) {
     const absolutePath = join(rootPath, relativePath)
@@ -151,9 +169,13 @@ export async function importFolderFiles(
     const existing = await linkRepo.findActiveByUrl(absolutePath)
     const link = existing ?? (await linkRepo.create({ kind: 'file', title: basename(absolutePath), url: absolutePath }))
     if (existing) alreadyLinked++
-    else created++
+    else {
+      created++
+      newlyCreated.push({ id: link.id, absolutePath })
+    }
     for (const tag of chain) await linkTagRepo.add(link.id, tag.id)
   }
+  if (newlyCreated.length) void backfillContentInBackground(newlyCreated)
   return { tag: rootTag!, created, alreadyLinked }
 }
 
@@ -202,6 +224,7 @@ export async function syncFolderTag(tagId: string): Promise<FolderSyncResult> {
   // 캐시에 자기 자신을 미리 심어 ensureFolderTagChain이 새로 만들지 않고 그대로 재사용하게 한다.
   const cache = new Map<string, Tag>([[tag.sourcePath, tag]])
   let addedCount = 0
+  const newlyCreated: { id: string; absolutePath: string }[] = []
   for (const entry of files) {
     if (trackedPaths.has(entry.absolutePath)) continue
     const existing = await linkRepo.findActiveByUrl(entry.absolutePath)
@@ -209,8 +232,12 @@ export async function syncFolderTag(tagId: string): Promise<FolderSyncResult> {
       existing ?? (await linkRepo.create({ kind: 'file', title: basename(entry.absolutePath), url: entry.absolutePath }))
     const chain = await ensureFolderTagChain(tag.sourcePath, dirSegmentsOf(entry.relativePath), cache)
     for (const t of chain) await linkTagRepo.add(link.id, t.id)
-    if (!existing) addedCount++
+    if (!existing) {
+      addedCount++
+      newlyCreated.push({ id: link.id, absolutePath: entry.absolutePath })
+    }
   }
+  if (newlyCreated.length) void backfillContentInBackground(newlyCreated)
 
   let removedCount = 0
   for (const link of trackedLinks) {

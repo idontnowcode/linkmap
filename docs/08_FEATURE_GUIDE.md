@@ -50,6 +50,7 @@ LinkMap은 이를 **그래프**로 바꾼다:
 | 아이콘 | `lucide-react` |
 | ID 생성 | `nanoid` |
 | 문서 미리보기 | `mammoth`(.docx → HTML), `xlsx`/SheetJS(.xlsx 시트 파싱, CDN tgz 참조) |
+| PDF 텍스트 추출(전문검색용) | `unpdf`(pdf.js 기반 순수 JS/WASM, 네이티브 바이너리 없음) — 메인 프로세스 전용, `fileContent.ts` |
 
 ### 2.2 프로세스 아키텍처 (Electron 3-프로세스 모델)
 ```
@@ -367,7 +368,9 @@ React Flow 기반 인터랙티브 그래프. 핵심 상호작용:
 
 **전문검색(본문) 수집 범위**
 - 웹 링크: `metaFetch`가 페이지 HTML을 가져와 스크립트/스타일 제거 후 텍스트만 추출, 최대 4000자.
-- 로컬 파일: `fileContent.ts`가 **텍스트/코드 확장자 화이트리스트**(`.md .txt .json .yml .ts .tsx .js .py .go .rs .java .c .cpp .cs .php .sql .html .css` 등 60여종)에 해당하고 2MB 이하인 파일만 읽어 최대 8000자 저장. PDF·이미지·바이너리·폴더는 본문 색인 대상이 아님(제목/경로로만 검색 가능).
+- 로컬 파일: `fileContent.ts`가 **텍스트/코드 확장자 화이트리스트**(`.md .txt .json .yml .ts .tsx .js .py .go .rs .java .c .cpp .cs .php .sql .html .css` 등 60여종)에 해당하고 2MB 이하인 파일만 읽어 최대 8000자 저장.
+- **PDF/DOCX/XLSX도 전문검색 대상(2026-09-18)** — PDF는 `unpdf`(pdf.js 기반 순수 JS/WASM, 네이티브 바이너리 없음), DOCX는 `mammoth.extractRawText()`, XLSX는 `xlsx`(SheetJS)로 시트를 CSV화해 본문을 추출한다(원본 30MB 초과는 대상 제외). 이미지·기타 바이너리·폴더는 여전히 본문 색인 대상이 아님(제목/경로로만 검색 가능).
+- 단일 파일 추가(파일 선택 다이얼로그)는 즉시 추출하지만, **폴더 가져오기/동기화(6.12~6.13절)는 가져오기 완료 후 백그라운드에서 순차적으로** 본문을 채운다(대량 폴더에서 UI가 멈추지 않도록) — 완료 즉시 검색되지 않고 잠시 후 반영될 수 있다.
 - 검색 결과 카드에 매칭 위치가 본문일 때 **"본문" 배지 + 주변 스니펫 + 하이라이트**가 표시됨.
 
 ### 6.7 AI 관계 추천 (`suggestRelations.ts`)
