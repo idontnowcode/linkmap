@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { File, Folder, Globe, Plus, Sparkles } from 'lucide-react'
+import { AlertTriangle, File, Folder, Globe, Plus, Sparkles } from 'lucide-react'
 import type { LinkKind } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
@@ -20,6 +20,7 @@ export function LinkFormDialog(): JSX.Element {
   const selectNode = useUiStore((s) => s.selectNode)
 
   const tags = useAppStore((s) => s.snapshot.tags)
+  const links = useAppStore((s) => s.snapshot.links)
   const createLink = useAppStore((s) => s.createLink)
   const updateLink = useAppStore((s) => s.updateLink)
   const createTag = useAppStore((s) => s.createTag)
@@ -100,6 +101,14 @@ export function LinkFormDialog(): JSX.Element {
   }
 
   const invalid = isNote ? !title.trim() : !url || !title
+
+  // 중복 링크 감지(P3) — 파일 링크는 findActiveByUrl로 이미 서버에서 재사용 처리되지만,
+  // 웹 링크는 의도적으로 중복 저장을 막지 않고(같은 URL을 다른 맥락으로 또 저장하고 싶을
+  // 수 있어서) 경고만 보여준다. 새로 추가할 때만 해당 — 편집 중인 링크 자신은 제외.
+  const duplicateLink =
+    isWeb && !editId && url.trim()
+      ? links.find((l) => l.kind === 'web' && l.deletedAt == null && l.url === url.trim())
+      : null
 
   const submit = async (): Promise<void> => {
     if (invalid) return
@@ -200,6 +209,12 @@ export function LinkFormDialog(): JSX.Element {
               </Button>
             )}
           </div>
+          {duplicateLink && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-sm text-amber-700">
+              <AlertTriangle size={13} className="shrink-0" />
+              이미 저장된 링크입니다 — &lsquo;{duplicateLink.title}&rsquo;
+            </p>
+          )}
         </Field>
       )}
 
