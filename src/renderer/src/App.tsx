@@ -4,6 +4,7 @@ import { useUiStore } from './store/uiStore'
 import { AppShell } from './app/layout/AppShell'
 import { LinkFormDialog } from './features/links/LinkFormDialog'
 import { TagFormDialog } from './features/tags/TagFormDialog'
+import { TagMergeDialog } from './features/tags/TagMergeDialog'
 import { RelationDialog } from './features/relations/RelationDialog'
 import { CollectionFormDialog } from './features/collections/CollectionFormDialog'
 import { CollectionPickerDialog } from './features/collections/CollectionPickerDialog'
@@ -141,6 +142,7 @@ export default function App(): JSX.Element {
       <AppShell />
       <LinkFormDialog />
       <TagFormDialog />
+      <TagMergeDialog />
       <RelationDialog />
       <CollectionFormDialog />
       <CollectionPickerDialog />

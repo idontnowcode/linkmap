@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Combine,
   Folder,
   FolderInput,
   Link2,
@@ -51,6 +52,7 @@ export function LeftRail(): JSX.Element {
   const openFolderImport = useUiStore((s) => s.openFolderImport)
   const openFolderSync = useUiStore((s) => s.openFolderSync)
   const openFolderExclusion = useUiStore((s) => s.openFolderExclusion)
+  const openTagMerge = useUiStore((s) => s.openTagMerge)
 
   const [menu, setMenu] = useState<RailMenu | null>(null)
   const [tagsCollapsed, setTagsCollapsed] = useState(false)
@@ -312,6 +314,11 @@ export function LeftRail(): JSX.Element {
               label: '이름·색상 편집',
               icon: <Pencil size={14} />,
               onClick: () => openTagForm(menu.id)
+            },
+            {
+              label: '다른 태그와 병합',
+              icon: <Combine size={14} />,
+              onClick: () => openTagMerge(menu.id)
             },
             {
               label: '태그 삭제',

@@ -29,6 +29,7 @@ export const IPC = {
   tagCreate: 'tags:create',
   tagUpdate: 'tags:update',
   tagDelete: 'tags:delete',
+  tagMerge: 'tags:merge',
 
   relationCreate: 'relations:create',
   relationDelete: 'relations:delete',
@@ -120,6 +121,8 @@ export interface LinkMapApi {
   createTag(input: CreateTagInput): Promise<Tag>
   updateTag(id: string, patch: Partial<CreateTagInput>): Promise<Tag>
   deleteTag(id: string): Promise<void>
+  /** sourceTagId를 targetTagId로 병합 — 모든 링크의 태그 연결을 옮기고 원본 태그는 삭제 */
+  mergeTag(sourceTagId: string, targetTagId: string): Promise<void>
 
   createRelation(input: CreateRelationInput): Promise<Relation>
   deleteRelation(id: string): Promise<void>

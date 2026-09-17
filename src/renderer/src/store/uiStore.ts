@@ -39,6 +39,8 @@ interface UiState {
   folderSyncTagId: string | null
   /** 동기화 범위(제외 목록) 편집 다이얼로그 대상 태그 id — null이면 닫힘 */
   folderExclusionTagId: string | null
+  /** 병합 다이얼로그의 병합 "원본" 태그 id — null이면 닫힘 */
+  tagMergeSourceId: string | null
 
   selectNode: (id: string | null, kind?: NodeKind | null) => void
   setTab: (tab: DetailTab) => void
@@ -66,6 +68,8 @@ interface UiState {
   closeFolderSync: () => void
   openFolderExclusion: (tagId: string) => void
   closeFolderExclusion: () => void
+  openTagMerge: (sourceTagId: string) => void
+  closeTagMerge: () => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -94,6 +98,7 @@ export const useUiStore = create<UiState>((set) => ({
   folderImportOpen: false,
   folderSyncTagId: null,
   folderExclusionTagId: null,
+  tagMergeSourceId: null,
 
   selectNode: (id, kind = 'link') => set({ selectedNodeId: id, selectedKind: id ? kind : null }),
   setTab: (tab) => set({ activeTab: tab }),
@@ -123,5 +128,7 @@ export const useUiStore = create<UiState>((set) => ({
   openFolderSync: (tagId) => set({ folderSyncTagId: tagId }),
   closeFolderSync: () => set({ folderSyncTagId: null }),
   openFolderExclusion: (tagId) => set({ folderExclusionTagId: tagId }),
-  closeFolderExclusion: () => set({ folderExclusionTagId: null })
+  closeFolderExclusion: () => set({ folderExclusionTagId: null }),
+  openTagMerge: (sourceTagId) => set({ tagMergeSourceId: sourceTagId }),
+  closeTagMerge: () => set({ tagMergeSourceId: null })
 }))

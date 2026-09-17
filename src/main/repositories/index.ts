@@ -206,6 +206,33 @@ export const tagRepo = {
   async count(): Promise<number> {
     const rows = await getDb().select({ id: tags.id }).from(tags).all()
     return rows.length
+  },
+  /** 이름 완전일치로 태그 탐색 (확장자 자동 태그 재사용, 폴더 가져오기 인라인 태그 생성 등) */
+  async findByName(name: string): Promise<Tag | null> {
+    const row = await getDb().select().from(tags).where(eq(tags.name, name)).get()
+    return row ?? null
+  },
+  /** sourceTagId를 targetTagId로 병합 — 모든 링크의 태그 연결을 옮기고(중복은 무시),
+   * 태그를 가리키는 관계(sourceKind/targetKind='tag')도 재연결한 뒤 원본 태그를 삭제한다. */
+  async mergeInto(sourceTagId: string, targetTagId: string): Promise<void> {
+    if (sourceTagId === targetTagId) return
+    const db = getDb()
+    const sourceLinks = await db.select().from(linkTags).where(eq(linkTags.tagId, sourceTagId)).all()
+    for (const lt of sourceLinks) {
+      await db.insert(linkTags).values({ linkId: lt.linkId, tagId: targetTagId }).onConflictDoNothing().run()
+    }
+    await db.delete(linkTags).where(eq(linkTags.tagId, sourceTagId)).run()
+    await db
+      .update(relations)
+      .set({ sourceId: targetTagId })
+      .where(and(eq(relations.sourceId, sourceTagId), eq(relations.sourceKind, 'tag')))
+      .run()
+    await db
+      .update(relations)
+      .set({ targetId: targetTagId })
+      .where(and(eq(relations.targetId, sourceTagId), eq(relations.targetKind, 'tag')))
+      .run()
+    await db.delete(tags).where(eq(tags.id, sourceTagId)).run()
   }
 }
 

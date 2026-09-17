@@ -39,6 +39,9 @@ export function registerIpcHandlers(): void {
     tagRepo.update(id, patch)
   )
   ipcMain.handle(IPC.tagDelete, (_e, id: string) => tagRepo.remove(id))
+  ipcMain.handle(IPC.tagMerge, (_e, sourceTagId: string, targetTagId: string) =>
+    tagRepo.mergeInto(sourceTagId, targetTagId)
+  )
 
   ipcMain.handle(IPC.relationCreate, (_e, input: CreateRelationInput) =>
     relationRepo.create(input)

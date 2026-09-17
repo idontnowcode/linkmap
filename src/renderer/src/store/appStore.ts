@@ -31,6 +31,7 @@ interface AppState {
   createTag: (input: CreateTagInput) => Promise<string>
   updateTag: (id: string, patch: Partial<CreateTagInput>) => Promise<void>
   deleteTag: (id: string) => Promise<void>
+  mergeTag: (sourceTagId: string, targetTagId: string) => Promise<void>
 
   createRelation: (input: CreateRelationInput) => Promise<void>
   deleteRelation: (id: string) => Promise<void>
@@ -140,6 +141,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   deleteTag: async (id) => {
     await window.api.deleteTag(id)
+    await get().refresh()
+  },
+  mergeTag: async (sourceTagId, targetTagId) => {
+    await window.api.mergeTag(sourceTagId, targetTagId)
     await get().refresh()
   },
 

@@ -15,6 +15,7 @@ const api: LinkMapApi = {
   createTag: (input) => ipcRenderer.invoke(IPC.tagCreate, input),
   updateTag: (id, patch) => ipcRenderer.invoke(IPC.tagUpdate, id, patch),
   deleteTag: (id) => ipcRenderer.invoke(IPC.tagDelete, id),
+  mergeTag: (sourceTagId, targetTagId) => ipcRenderer.invoke(IPC.tagMerge, sourceTagId, targetTagId),
 
   createRelation: (input) => ipcRenderer.invoke(IPC.relationCreate, input),
   deleteRelation: (id) => ipcRenderer.invoke(IPC.relationDelete, id),
