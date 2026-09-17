@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link2Off, Loader2 } from 'lucide-react'
+import { Download, Link2Off, Loader2, Upload } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { useSettingsStore } from '@/store/settingsStore'
@@ -24,6 +24,43 @@ export function SettingsDialog(): JSX.Element {
       setCheckResult({ checked: res.checked, broken: res.brokenIds.length })
     } finally {
       setChecking(false)
+    }
+  }
+
+  const [exporting, setExporting] = useState(false)
+  const [exportMsg, setExportMsg] = useState<string | null>(null)
+  const runExport = async (): Promise<void> => {
+    setExporting(true)
+    setExportMsg(null)
+    try {
+      const res = await window.api.exportData()
+      if (!res.canceled) setExportMsg(`저장했습니다 — ${res.path}`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState<string | null>(null)
+  const runImport = async (): Promise<void> => {
+    setImporting(true)
+    setImportMsg(null)
+    try {
+      const res = await window.api.importData()
+      if (res.canceled) return
+      if (res.error) {
+        setImportMsg(res.error)
+        return
+      }
+      await refresh()
+      const sm = res.summary
+      setImportMsg(
+        sm
+          ? `가져왔습니다 — 링크 ${sm.links}, 태그 ${sm.tags}, 관계 ${sm.relations}, 폴더 ${sm.collections}건 확인(이미 있던 항목은 건너뜀)`
+          : '가져왔습니다.'
+      )
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -83,6 +120,34 @@ export function SettingsDialog(): JSX.Element {
             {checkResult.checked}개 확인, {checkResult.broken}개 응답 없음
           </p>
         )}
+      </div>
+
+      <div className="mt-4 border-t border-line pt-3">
+        <p className="mb-1 text-body font-medium text-ink-strong">데이터 내보내기 / 가져오기</p>
+        <p className="mb-2 text-sm text-ink-muted">
+          전체 데이터(링크·태그·관계·폴더 등)를 JSON 파일로 백업하거나, 백업 파일을 다시 가져올
+          수 있습니다. 가져오기는 기존 데이터를 지우지 않고 추가만 합니다(같은 항목은 건너뜀).
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => void runExport()}
+            disabled={exporting}
+            className="flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-body text-ink-strong hover:bg-list disabled:opacity-50"
+          >
+            {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            내보내기(JSON)
+          </button>
+          <button
+            onClick={() => void runImport()}
+            disabled={importing}
+            className="flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-body text-ink-strong hover:bg-list disabled:opacity-50"
+          >
+            {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+            가져오기(JSON)
+          </button>
+        </div>
+        {exportMsg && <p className="mt-2 text-sm text-ink-muted">{exportMsg}</p>}
+        {importMsg && <p className="mt-2 text-sm text-ink-muted">{importMsg}</p>}
       </div>
     </Modal>
   )

@@ -50,7 +50,10 @@ const api: LinkMapApi = {
   folderExclusionsSet: (tagId, excludedRelativePaths) =>
     ipcRenderer.invoke(IPC.folderExclusionsSet, tagId, excludedRelativePaths),
 
-  checkBrokenLinks: () => ipcRenderer.invoke(IPC.linksCheckBroken)
+  checkBrokenLinks: () => ipcRenderer.invoke(IPC.linksCheckBroken),
+
+  exportData: () => ipcRenderer.invoke(IPC.dataExport),
+  importData: () => ipcRenderer.invoke(IPC.dataImport)
 }
 
 contextBridge.exposeInMainWorld('api', api)

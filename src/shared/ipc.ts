@@ -57,7 +57,10 @@ export const IPC = {
   folderExclusionsGet: 'folder:exclusionsGet',
   folderExclusionsSet: 'folder:exclusionsSet',
 
-  linksCheckBroken: 'links:checkBroken'
+  linksCheckBroken: 'links:checkBroken',
+
+  dataExport: 'data:export',
+  dataImport: 'data:import'
 } as const
 
 /** path:readBinary 결과 — 실패 시 data는 null, reason에 사유 표시 */
@@ -114,6 +117,26 @@ export interface FolderSyncResult {
 export interface CheckBrokenLinksResult {
   checked: number
   brokenIds: string[]
+}
+
+/** 전체 데이터 내보내기/가져오기(P6) 결과 */
+export interface DataExportResult {
+  canceled: boolean
+  path?: string
+}
+export interface DataImportSummary {
+  tags: number
+  links: number
+  collections: number
+  relations: number
+  linkTags: number
+  collectionLinks: number
+  folderExclusions: number
+}
+export interface DataImportResult {
+  canceled: boolean
+  summary?: DataImportSummary
+  error?: string
 }
 
 /** preload가 contextBridge로 노출하는 API 표면 */
@@ -176,6 +199,11 @@ export interface LinkMapApi {
 
   /** 모든 활성 웹 링크의 생존 여부를 확인해 DB에 기록(수동 실행, 동시성 제한 있음) */
   checkBrokenLinks(): Promise<CheckBrokenLinksResult>
+
+  /** 전체 데이터(links/tags/relations 등)를 JSON 파일로 내보내기(저장 다이얼로그) */
+  exportData(): Promise<DataExportResult>
+  /** JSON 파일을 선택해 현재 DB에 추가(add-only, 같은 id는 건너뜀) */
+  importData(): Promise<DataImportResult>
 }
 
 declare global {

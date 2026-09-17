@@ -1,5 +1,5 @@
 import { ipcMain, shell, dialog, clipboard } from 'electron'
-import { stat } from 'node:fs/promises'
+import { stat, readFile, writeFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { IPC } from '@shared/ipc'
 import type {
@@ -21,6 +21,7 @@ import { fetchMeta } from '../services/metaFetch'
 import { readTextFileContent, readBinaryFile } from '../services/fileContent'
 import { importFolderFiles, listFolderTree, previewFolderSync, syncFolderTag } from '../services/folderImport'
 import { checkAllBrokenLinks } from '../services/linkHealth'
+import { exportAllData, importAllData, type ExportedData } from '../services/dataPortability'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.graphSnapshot, () => graphRepo.snapshot())
@@ -115,4 +116,31 @@ export function registerIpcHandlers(): void {
   )
 
   ipcMain.handle(IPC.linksCheckBroken, () => checkAllBrokenLinks())
+
+  // 전체 데이터 내보내기/가져오기(P6) — 로컬 백업/이전용. 클라우드 동기화 없음.
+  ipcMain.handle(IPC.dataExport, async () => {
+    const res = await dialog.showSaveDialog({
+      defaultPath: `linkmap-export-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (res.canceled || !res.filePath) return { canceled: true }
+    const data = await exportAllData()
+    await writeFile(res.filePath, JSON.stringify(data, null, 2), 'utf8')
+    return { canceled: false, path: res.filePath }
+  })
+  ipcMain.handle(IPC.dataImport, async () => {
+    const res = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (res.canceled || !res.filePaths[0]) return { canceled: true }
+    try {
+      const raw = await readFile(res.filePaths[0], 'utf8')
+      const data = JSON.parse(raw) as Partial<ExportedData>
+      const summary = await importAllData(data)
+      return { canceled: false, summary }
+    } catch {
+      return { canceled: false, error: '파일을 읽지 못했거나 형식이 올바르지 않습니다.' }
+    }
+  })
 }
