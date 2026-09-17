@@ -12,6 +12,7 @@ import { SettingsDialog } from './features/settings/SettingsDialog'
 import { FolderImportDialog } from './features/links/FolderImportDialog'
 import { FolderSyncPreviewDialog } from './features/links/FolderSyncPreviewDialog'
 import { FolderSyncExclusionDialog } from './features/links/FolderSyncExclusionDialog'
+import { CommandPalette } from './features/command/CommandPalette'
 
 export default function App(): JSX.Element {
   const load = useAppStore((s) => s.load)
@@ -29,6 +30,10 @@ export default function App(): JSX.Element {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault()
         ui.openLinkForm()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        ui.toggleCommandPalette()
       }
       if (e.key === 'Escape') ui.selectNode(null)
     }
@@ -150,6 +155,7 @@ export default function App(): JSX.Element {
       <FolderImportDialog />
       <FolderSyncPreviewDialog />
       <FolderSyncExclusionDialog />
+      <CommandPalette />
       {dragging && (
         <div className="pointer-events-none fixed inset-0 z-40 grid place-items-center bg-brand/10 backdrop-blur-sm">
           <div className="rounded-lg border-2 border-dashed border-brand bg-white px-8 py-6 text-h text-brand shadow-pop">

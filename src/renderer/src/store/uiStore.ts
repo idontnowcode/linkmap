@@ -41,6 +41,8 @@ interface UiState {
   folderExclusionTagId: string | null
   /** 병합 다이얼로그의 병합 "원본" 태그 id — null이면 닫힘 */
   tagMergeSourceId: string | null
+  /** 커맨드 팔레트(Ctrl/Cmd+K) 오버레이 열림 여부 */
+  commandPaletteOpen: boolean
 
   selectNode: (id: string | null, kind?: NodeKind | null) => void
   setTab: (tab: DetailTab) => void
@@ -70,6 +72,8 @@ interface UiState {
   closeFolderExclusion: () => void
   openTagMerge: (sourceTagId: string) => void
   closeTagMerge: () => void
+  toggleCommandPalette: () => void
+  closeCommandPalette: () => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -99,6 +103,7 @@ export const useUiStore = create<UiState>((set) => ({
   folderSyncTagId: null,
   folderExclusionTagId: null,
   tagMergeSourceId: null,
+  commandPaletteOpen: false,
 
   selectNode: (id, kind = 'link') => set({ selectedNodeId: id, selectedKind: id ? kind : null }),
   setTab: (tab) => set({ activeTab: tab }),
@@ -130,5 +135,7 @@ export const useUiStore = create<UiState>((set) => ({
   openFolderExclusion: (tagId) => set({ folderExclusionTagId: tagId }),
   closeFolderExclusion: () => set({ folderExclusionTagId: null }),
   openTagMerge: (sourceTagId) => set({ tagMergeSourceId: sourceTagId }),
-  closeTagMerge: () => set({ tagMergeSourceId: null })
+  closeTagMerge: () => set({ tagMergeSourceId: null }),
+  toggleCommandPalette: () => set((s) => ({ commandPaletteOpen: !s.commandPaletteOpen })),
+  closeCommandPalette: () => set({ commandPaletteOpen: false })
 }))
