@@ -100,8 +100,10 @@ export function registerIpcHandlers(): void {
 
   // 폴더 가져오기(P3) / 폴더 동기화(P4)
   ipcMain.handle(IPC.folderList, (_e, rootPath: string) => listFolderTree(rootPath))
-  ipcMain.handle(IPC.folderImport, (_e, rootPath: string, relativePaths: string[]) =>
-    importFolderFiles(rootPath, relativePaths)
+  ipcMain.handle(
+    IPC.folderImport,
+    (_e, rootPath: string, relativePaths: string[], extTags?: boolean) =>
+      importFolderFiles(rootPath, relativePaths, extTags)
   )
   ipcMain.handle(IPC.folderSyncPreview, (_e, tagId: string) => previewFolderSync(tagId))
   ipcMain.handle(IPC.folderSync, (_e, tagId: string) => syncFolderTag(tagId))

@@ -3,7 +3,7 @@
 // 기존 아키텍처의 async repository 패턴(libsql/Drizzle)으로 재작성.
 import { readdir } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
-import { basename, join, relative } from 'node:path'
+import { basename, extname, join, relative } from 'node:path'
 import type {
   FolderEntry,
   FolderImportResult,
@@ -126,6 +126,23 @@ async function backfillContentInBackground(items: { id: string; absolutePath: st
   }
 }
 
+/** 확장자별 보조 태그(P4) — 폴더 계층 태그와 달리 sourcePath 없는 일반 태그라 "태그"
+ * 섹션에 뜨고, 같은 이름의 기존 태그가 있으면(수동 생성분 포함) 그대로 재사용한다. */
+async function ensureExtTag(ext: string, cache: Map<string, Tag>): Promise<Tag | null> {
+  if (!ext) return null
+  const cached = cache.get(ext)
+  if (cached) return cached
+  const existing = await tagRepo.findByName(ext)
+  if (existing) {
+    cache.set(ext, existing)
+    return existing
+  }
+  const count = await tagRepo.count()
+  const tag = await tagRepo.create({ name: ext, color: TAG_PALETTE[count % TAG_PALETTE.length], sourcePath: null })
+  cache.set(ext, tag)
+  return tag
+}
+
 /** relativePath(파일)의 디렉터리 부분을 "/"·"\\" 무관하게 세그먼트 배열로 쪼갠다. */
 function dirSegmentsOf(relativeFilePath: string): string[] {
   const segments = relativeFilePath.split(/[\\/]/).filter(Boolean)
@@ -151,12 +168,14 @@ function isPathExcluded(relativePath: string, excluded: ReadonlySet<string>): bo
 /** 선택된 상대경로들을 일괄로 링크 생성 + 조상 폴더 전체의 계층 태그 부착. 이미 활성 링크가 있으면 재사용. */
 export async function importFolderFiles(
   rootPath: string,
-  selectedRelativePaths: string[]
+  selectedRelativePaths: string[],
+  extTags = false
 ): Promise<FolderImportResult> {
   if (!rootPath) throw new Error('invalid_input: root_path_required')
   if (!selectedRelativePaths?.length) throw new Error('invalid_input: paths_required')
 
   const cache = new Map<string, Tag>()
+  const extCache = new Map<string, Tag>()
   let created = 0
   let alreadyLinked = 0
   let rootTag: Tag | null = null
@@ -174,6 +193,11 @@ export async function importFolderFiles(
       newlyCreated.push({ id: link.id, absolutePath })
     }
     for (const tag of chain) await linkTagRepo.add(link.id, tag.id)
+    if (extTags) {
+      const ext = extname(absolutePath).toLowerCase().replace(/^\./, '')
+      const extTag = await ensureExtTag(ext, extCache)
+      if (extTag) await linkTagRepo.add(link.id, extTag.id)
+    }
   }
   if (newlyCreated.length) void backfillContentInBackground(newlyCreated)
   return { tag: rootTag!, created, alreadyLinked }

@@ -153,7 +153,8 @@ export interface LinkMapApi {
 
   // 폴더 가져오기/동기화
   folderList(rootPath: string): Promise<FolderListResult>
-  folderImport(rootPath: string, relativePaths: string[]): Promise<FolderImportResult>
+  /** extTags=true면 확장자별 보조 태그(pdf/xlsx/png 등, sourcePath 없는 일반 태그)도 함께 부착 */
+  folderImport(rootPath: string, relativePaths: string[], extTags?: boolean): Promise<FolderImportResult>
   /** 실제로 반영하지 않고 추가/삭제될 항목만 미리 계산 */
   folderSyncPreview(tagId: string): Promise<FolderSyncPreviewResult>
   folderSync(tagId: string): Promise<FolderSyncResult>

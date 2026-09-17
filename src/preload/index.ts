@@ -41,8 +41,8 @@ const api: LinkMapApi = {
   copyText: (text) => ipcRenderer.invoke(IPC.copyText, text),
 
   folderList: (rootPath) => ipcRenderer.invoke(IPC.folderList, rootPath),
-  folderImport: (rootPath, relativePaths) =>
-    ipcRenderer.invoke(IPC.folderImport, rootPath, relativePaths),
+  folderImport: (rootPath, relativePaths, extTags) =>
+    ipcRenderer.invoke(IPC.folderImport, rootPath, relativePaths, extTags),
   folderSyncPreview: (tagId) => ipcRenderer.invoke(IPC.folderSyncPreview, tagId),
   folderSync: (tagId) => ipcRenderer.invoke(IPC.folderSync, tagId),
   folderExclusionsGet: (tagId) => ipcRenderer.invoke(IPC.folderExclusionsGet, tagId),

@@ -25,6 +25,7 @@ export function FolderImportDialog(): JSX.Element {
   const [truncated, setTruncated] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [extTags, setExtTags] = useState(false)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +40,7 @@ export function FolderImportDialog(): JSX.Element {
     setTruncated(false)
     setSelected(new Set())
     setCollapsed(new Set())
+    setExtTags(false)
     setError(null)
     setResult(null)
   }
@@ -109,7 +111,7 @@ export function FolderImportDialog(): JSX.Element {
     setImporting(true)
     setError(null)
     try {
-      const res = await window.api.folderImport(root, [...selected])
+      const res = await window.api.folderImport(root, [...selected], extTags)
       await refresh()
       setResult({ created: res.created, alreadyLinked: res.alreadyLinked })
     } catch {
@@ -231,12 +233,18 @@ export function FolderImportDialog(): JSX.Element {
             <p className="text-sm text-ink-muted">이 폴더에는 파일이 없습니다.</p>
           ) : (
             <>
-              <button
-                onClick={toggleAll}
-                className="mb-2 rounded-sm px-2 py-1 text-sm text-ink-muted hover:bg-list hover:text-ink-strong"
-              >
-                {selected.size === allFilePaths.length ? '전체 해제' : '전체 선택'}
-              </button>
+              <div className="mb-2 flex items-center justify-between">
+                <button
+                  onClick={toggleAll}
+                  className="rounded-sm px-2 py-1 text-sm text-ink-muted hover:bg-list hover:text-ink-strong"
+                >
+                  {selected.size === allFilePaths.length ? '전체 해제' : '전체 선택'}
+                </button>
+                <label className="flex cursor-pointer items-center gap-1.5 pr-1 text-sm text-ink-muted">
+                  <input type="checkbox" checked={extTags} onChange={(e) => setExtTags(e.target.checked)} />
+                  확장자별 보조 태그 자동 추가
+                </label>
+              </div>
               <div
                 className={cn(
                   'max-h-80 overflow-y-auto rounded-md border border-line py-1',
