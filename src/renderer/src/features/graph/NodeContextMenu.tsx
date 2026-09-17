@@ -55,7 +55,7 @@ export function NodeContextMenu({
           icon={<ExternalLink size={14} />}
           label={menu.linkKind === 'folder' ? '폴더 열기' : menu.linkKind === 'file' ? '파일 열기' : 'URL 열기'}
           onClick={() => {
-            if (menu.url) openTarget(menu.linkKind, menu.url)
+            if (menu.url) openTarget(menu.linkKind, menu.url, menu.nodeId)
             onClose()
           }}
         />

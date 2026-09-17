@@ -54,7 +54,8 @@ function toLink(row: LinkRow): Link {
     deletedAt: row.deletedAt ? row.deletedAt.getTime() : null,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
-    fileMtime: row.fileMtime ? row.fileMtime.getTime() : null
+    fileMtime: row.fileMtime ? row.fileMtime.getTime() : null,
+    openedAt: row.openedAt ? row.openedAt.getTime() : null
   }
 }
 
@@ -145,6 +146,11 @@ export const linkRepo = {
 
   async remove(id: string): Promise<void> {
     await getDb().delete(links).where(eq(links.id, id)).run()
+  },
+
+  /** 실제로 열었을 때(openTarget) 호출 — "최근 연 링크" 스마트뷰 기준 갱신 */
+  async markOpened(id: string): Promise<void> {
+    await getDb().update(links).set({ openedAt: new Date() }).where(eq(links.id, id)).run()
   },
 
   async toggleFavorite(id: string): Promise<Link> {
@@ -395,6 +401,7 @@ export const graphRepo = {
       all: active.length,
       favorites: active.filter((l) => l.favorite).length,
       recent: active.filter((l) => l.createdAt.getTime() >= since).length,
+      openedRecent: active.filter((l) => l.openedAt != null && l.openedAt.getTime() >= since).length,
       trash: trashRows.length,
       byTag,
       byCollection

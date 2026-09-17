@@ -114,7 +114,7 @@ export function FilePreview({ link, compact = false }: { link: Link; compact?: b
     <div className="mb-4">
       {showOpenExternally && (
         <button
-          onClick={() => openTarget(link.kind, link.url)}
+          onClick={() => openTarget(link.kind, link.url, link.id)}
           className="mb-2 flex items-center gap-1.5 text-sm text-ink-muted hover:text-brand"
         >
           <ExternalLink size={13} /> 기본 앱으로 열기

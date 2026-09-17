@@ -159,7 +159,7 @@ export function GraphCanvas(): JSX.Element {
 
   const onNodeDoubleClick: NodeMouseHandler = useCallback((_e, node: Node) => {
     const data = node.data as { url?: string; linkKind?: LinkKind }
-    if (data.url) openTarget(data.linkKind, data.url)
+    if (data.url) openTarget(data.linkKind, data.url, node.id)
   }, [])
 
   const onNodeContextMenu: NodeMouseHandler = useCallback((e, node: Node) => {

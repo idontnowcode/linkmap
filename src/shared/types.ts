@@ -49,6 +49,8 @@ export interface Link {
   updatedAt: number
   /** kind='file' 링크를 저장한 시점의 원본 파일 mtime(epoch ms) — 없으면(웹/메모 등) null */
   fileMtime: number | null
+  /** 실제로 열었던(openTarget) 마지막 시각(epoch ms) — 한 번도 안 열었으면 null */
+  openedAt: number | null
 }
 
 export interface Tag {
@@ -96,6 +98,8 @@ export interface LinkCounts {
   all: number
   favorites: number
   recent: number
+  /** 최근 7일 이내 openTarget으로 열어본 활성 링크 수 — "최근 연 링크" 스마트뷰 카운트 */
+  openedRecent: number
   trash: number
   byTag: Record<string, number>
   byCollection: Record<string, number>

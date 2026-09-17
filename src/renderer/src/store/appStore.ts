@@ -66,6 +66,7 @@ const emptyCounts: LinkCounts = {
   all: 0,
   favorites: 0,
   recent: 0,
+  openedRecent: 0,
   trash: 0,
   byTag: {},
   byCollection: {}

@@ -136,7 +136,7 @@ export function LinkListColumn(): JSX.Element {
 
   const linkMenuItems = (link: LinkWithTags): MenuItem[] => {
     const items: MenuItem[] = [
-      { label: '열기', icon: <ExternalLink size={14} />, onClick: () => openTarget(link.kind, link.url) },
+      { label: '열기', icon: <ExternalLink size={14} />, onClick: () => openTarget(link.kind, link.url, link.id) },
       { label: '편집', icon: <Pencil size={14} />, onClick: () => openLinkForm(null, link.id) }
     ]
     if (contextTagId) {

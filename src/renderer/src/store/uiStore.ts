@@ -5,7 +5,7 @@ export type DetailTab = 'details' | 'relations' | 'notes' | 'preview'
 export type LayoutMode = 'force' | 'hierarchical' | 'radial'
 
 export type ActiveView =
-  | { kind: 'smart'; id: 'all' | 'favorites' | 'recent' | 'trash' }
+  | { kind: 'smart'; id: 'all' | 'favorites' | 'recent' | 'openedRecent' | 'trash' }
   | { kind: 'tag'; id: string }
   | { kind: 'collection'; id: string }
 

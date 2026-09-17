@@ -38,6 +38,14 @@ export function useVisibleLinks(): VisibleLinksResult {
           )
           viewTitle = '최근 추가'
           break
+        case 'openedRecent':
+          // 생성일(최근 추가)과 다른 기준 — 실제로 열어본 시각(opened_at) 내림차순.
+          // 'default' 정렬(LinkListColumn)일 때 이 순서가 그대로 유지된다.
+          inView = snapshot.links
+            .filter((l) => l.deletedAt == null && l.openedAt != null && Date.now() - l.openedAt <= RECENT_MS)
+            .sort((a, b) => (b.openedAt ?? 0) - (a.openedAt ?? 0))
+          viewTitle = '최근 연 링크'
+          break
         case 'trash':
           inView = snapshot.links.filter((l) => l.deletedAt != null)
           viewTitle = '휴지통'

@@ -94,7 +94,7 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
           <Label>{link.kind === 'web' ? 'URL' : '경로'}</Label>
           <div className="flex items-start gap-1.5">
             <button
-              onClick={() => openTarget(link.kind, link.url)}
+              onClick={() => openTarget(link.kind, link.url, link.id)}
               className="inline-flex min-w-0 flex-1 items-center gap-1 text-left text-brand hover:underline"
               title={link.kind === 'web' ? '브라우저로 열기' : 'OS 기본 앱으로 열기'}
             >

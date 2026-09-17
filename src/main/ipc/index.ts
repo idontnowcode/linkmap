@@ -33,6 +33,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.linkRestore, (_e, id: string) => linkRepo.restore(id))
   ipcMain.handle(IPC.linkDelete, (_e, id: string) => linkRepo.remove(id))
   ipcMain.handle(IPC.linkToggleFavorite, (_e, id: string) => linkRepo.toggleFavorite(id))
+  ipcMain.handle(IPC.linkMarkOpened, (_e, id: string) => linkRepo.markOpened(id))
 
   ipcMain.handle(IPC.tagCreate, (_e, input: CreateTagInput) => tagRepo.create(input))
   ipcMain.handle(IPC.tagUpdate, (_e, id: string, patch: Partial<CreateTagInput>) =>

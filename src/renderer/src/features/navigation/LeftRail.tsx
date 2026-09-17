@@ -6,6 +6,7 @@ import {
   Combine,
   Folder,
   FolderInput,
+  History,
   Link2,
   ListFilter,
   Pencil,
@@ -208,6 +209,7 @@ export function LeftRail(): JSX.Element {
     { id: 'all', label: '모든 링크', icon: Link2, count: counts.all },
     { id: 'favorites', label: '즐겨찾기', icon: Star, count: counts.favorites },
     { id: 'recent', label: '최근 추가', icon: Clock, count: counts.recent },
+    { id: 'openedRecent', label: '최근 연 링크', icon: History, count: counts.openedRecent },
     { id: 'trash', label: '휴지통', icon: Trash2, count: counts.trash }
   ] as const
 

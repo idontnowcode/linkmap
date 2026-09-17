@@ -11,6 +11,7 @@ const api: LinkMapApi = {
   restoreLink: (id) => ipcRenderer.invoke(IPC.linkRestore, id),
   deleteLink: (id) => ipcRenderer.invoke(IPC.linkDelete, id),
   toggleFavorite: (id) => ipcRenderer.invoke(IPC.linkToggleFavorite, id),
+  markLinkOpened: (id) => ipcRenderer.invoke(IPC.linkMarkOpened, id),
 
   createTag: (input) => ipcRenderer.invoke(IPC.tagCreate, input),
   updateTag: (id, patch) => ipcRenderer.invoke(IPC.tagUpdate, id, patch),

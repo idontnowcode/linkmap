@@ -25,6 +25,7 @@ export const IPC = {
   linkRestore: 'links:restore',
   linkDelete: 'links:delete',
   linkToggleFavorite: 'links:toggleFavorite',
+  linkMarkOpened: 'links:markOpened',
 
   tagCreate: 'tags:create',
   tagUpdate: 'tags:update',
@@ -118,6 +119,8 @@ export interface LinkMapApi {
   restoreLink(id: string): Promise<void>
   deleteLink(id: string): Promise<void>
   toggleFavorite(id: string): Promise<Link>
+  /** 실제로 열었을 때(openTarget) 호출 — "최근 연 링크" 스마트뷰 기준 갱신 */
+  markLinkOpened(id: string): Promise<void>
 
   createTag(input: CreateTagInput): Promise<Tag>
   updateTag(id: string, patch: Partial<CreateTagInput>): Promise<Tag>
