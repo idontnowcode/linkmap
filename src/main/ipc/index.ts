@@ -85,6 +85,15 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  ipcMain.handle(IPC.pathMtime, async (_e, path: string) => {
+    try {
+      const s = await stat(path)
+      return { exists: true, mtime: s.mtimeMs }
+    } catch {
+      return { exists: false, mtime: null }
+    }
+  })
+
   ipcMain.handle(IPC.readBinary, (_e, path: string) => readBinaryFile(path))
 
   ipcMain.handle(IPC.copyText, (_e, text: string) => clipboard.writeText(text))

@@ -47,6 +47,8 @@ export interface Link {
   deletedAt: number | null
   createdAt: number
   updatedAt: number
+  /** kind='file' 링크를 저장한 시점의 원본 파일 mtime(epoch ms) — 없으면(웹/메모 등) null */
+  fileMtime: number | null
 }
 
 export interface Tag {

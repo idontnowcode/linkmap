@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, ExternalLink, Maximize2, Plus, X } from 'lucide-react'
+import { AlertTriangle, Check, Copy, ExternalLink, Maximize2, Plus, X } from 'lucide-react'
 import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
@@ -17,6 +17,35 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
   // 상세 정보 탭 안에서도 미리보기가 보였으면 좋겠다는 피드백(2026-09-17) — "미리보기" 탭까지
   // 옮겨가지 않아도 바로 보이게 작은 크기로 끼워 넣는다. 전체 크기는 "미리보기" 탭 그대로.
   const richPreviewKind = previewKindFor(link.kind, link.url)
+
+  // 외부 파일 변경 감지(2026-09-18) — 저장된 link.fileMtime과 실제 파일의 현재 mtime을 비교.
+  // 카드마다 확인하면 IPC가 N번씩 나가 목록이 커질수록 느려질 수 있어, 선택된 링크 하나만
+  // (상세 패널에서) 확인하는 것으로 범위를 한정했다.
+  const [fileStatus, setFileStatus] = useState<{ checked: boolean; changed: boolean; missing: boolean }>({
+    checked: false,
+    changed: false,
+    missing: false
+  })
+  useEffect(() => {
+    if (link.kind !== 'file' || !link.fileMtime) {
+      setFileStatus({ checked: false, changed: false, missing: false })
+      return
+    }
+    let cancelled = false
+    window.api.pathMtime(link.url).then((r) => {
+      if (cancelled) return
+      if (!r.exists) setFileStatus({ checked: true, changed: false, missing: true })
+      else
+        setFileStatus({
+          checked: true,
+          changed: r.mtime != null && Math.abs(r.mtime - link.fileMtime!) > 2000,
+          missing: false
+        })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [link.id, link.kind, link.url, link.fileMtime])
 
   const [tagMenuOpen, setTagMenuOpen] = useState(false)
   const tagMenuRef = useRef<HTMLDivElement>(null)
@@ -74,6 +103,18 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
             </button>
             <CopyButton text={link.url} />
           </div>
+          {fileStatus.checked && (fileStatus.changed || fileStatus.missing) && (
+            <span
+              className="mt-1 inline-flex items-center gap-1 rounded-sm bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"
+              title={
+                fileStatus.missing
+                  ? '저장된 경로에서 파일을 찾을 수 없습니다 — 옮겨졌거나 삭제되었을 수 있습니다.'
+                  : '링크에 마지막으로 저장된 이후 파일이 바뀐 것으로 보입니다.'
+              }
+            >
+              <AlertTriangle size={11} /> {fileStatus.missing ? '파일 없음' : '파일이 변경됨'}
+            </span>
+          )}
         </div>
       )}
       {link.description && <Row label="설명" value={link.description} />}

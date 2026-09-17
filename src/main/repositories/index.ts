@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, isNotNull } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { dirname } from 'node:path'
+import { stat } from 'node:fs/promises'
 import { getDb, schema } from '../db/client'
 import type {
   Collection,
@@ -52,7 +53,19 @@ function toLink(row: LinkRow): Link {
     favorite: row.favorite,
     deletedAt: row.deletedAt ? row.deletedAt.getTime() : null,
     createdAt: row.createdAt.getTime(),
-    updatedAt: row.updatedAt.getTime()
+    updatedAt: row.updatedAt.getTime(),
+    fileMtime: row.fileMtime ? row.fileMtime.getTime() : null
+  }
+}
+
+/** kind='file'인 링크를 만들 때 원본 파일의 현재 mtime을 조회 — 실패(파일 없음 등)는 best-effort로 무시. */
+async function statFileMtime(kind: LinkKind, url: string): Promise<Date | null> {
+  if (kind !== 'file' || !url) return null
+  try {
+    const s = await stat(url)
+    return s.mtime
+  } catch {
+    return null
   }
 }
 
@@ -63,6 +76,7 @@ export const linkRepo = {
     const now = new Date()
     const id = nanoid()
     const kind = input.kind ?? 'web'
+    const fileMtime = await statFileMtime(kind, input.url)
     const row = {
       id,
       kind,
@@ -77,7 +91,8 @@ export const linkRepo = {
       favorite: input.favorite ?? false,
       deletedAt: null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      fileMtime
     }
     await db.insert(links).values(row).run()
     if (input.tagIds?.length) {

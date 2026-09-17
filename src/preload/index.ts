@@ -35,6 +35,7 @@ const api: LinkMapApi = {
   openPath: (path) => ipcRenderer.invoke(IPC.openPath, path),
   pickPaths: (mode) => ipcRenderer.invoke(IPC.pickPaths, mode),
   pathInfo: (path) => ipcRenderer.invoke(IPC.pathInfo, path),
+  pathMtime: (path) => ipcRenderer.invoke(IPC.pathMtime, path),
   readBinary: (path) => ipcRenderer.invoke(IPC.readBinary, path),
   getPathForFile: (file) => webUtils.getPathForFile(file),
   copyText: (text) => ipcRenderer.invoke(IPC.copyText, text),

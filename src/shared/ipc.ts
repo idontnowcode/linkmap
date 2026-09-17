@@ -45,6 +45,7 @@ export const IPC = {
   openPath: 'shell:openPath',
   pickPaths: 'dialog:pick',
   pathInfo: 'path:info',
+  pathMtime: 'path:mtime',
   readBinary: 'path:readBinary',
   copyText: 'clipboard:writeText',
 
@@ -140,6 +141,8 @@ export interface LinkMapApi {
   openPath(path: string): Promise<string>
   pickPaths(mode: 'file' | 'folder'): Promise<string[]>
   pathInfo(path: string): Promise<PathInfo>
+  /** 파일의 현재(실시간) mtime 조회 — 저장된 link.fileMtime과 비교해 외부 변경 감지용 */
+  pathMtime(path: string): Promise<{ exists: boolean; mtime: number | null }>
   /** 바이너리 파일(PDF/이미지/docx/xlsx 등) 원문을 Uint8Array로 읽기. 확장자 화이트리스트 + 용량 제한 적용 */
   readBinary(path: string): Promise<ReadBinaryResult>
   /** 드롭된 File 객체의 절대 경로 (Electron webUtils, 동기) */
