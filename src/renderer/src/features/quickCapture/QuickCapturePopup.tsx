@@ -5,7 +5,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link2, Loader2 } from 'lucide-react'
 
-type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'done'; title: string } | { kind: 'error'; message: string }
+type Status =
+  | { kind: 'idle' }
+  | { kind: 'saving' }
+  | { kind: 'done'; title: string }
+  | { kind: 'error'; message: string }
+  | { kind: 'confirm-duplicate'; existingTitle: string }
 
 export function QuickCapturePopup(): JSX.Element {
   const [value, setValue] = useState('')
@@ -31,9 +36,21 @@ export function QuickCapturePopup(): JSX.Element {
   const saveUrl = async (raw: string): Promise<void> => {
     const url = raw.trim()
     if (!url) return
+    const isWeb = /^https?:\/\//i.test(url)
+    // 이 팝업은 별도 렌더러 인스턴스라 메인 창의 LinkFormDialog가 하는 중복 경고(P3)를
+    // 그대로 못 쓴다 — window.api로 직접 확인. LinkFormDialog와 같은 원칙(경고만, 저장은
+    // 막지 않음)을 따르되, 이미 한 번 경고를 보고도 Enter를 다시 눌렀으면 그대로 저장한다.
+    if (isWeb && status.kind !== 'confirm-duplicate') {
+      const snapshot = await window.api.getSnapshot()
+      const dup = snapshot.links.find((l) => l.kind === 'web' && l.deletedAt == null && l.url === url)
+      if (dup) {
+        setStatus({ kind: 'confirm-duplicate', existingTitle: dup.title })
+        return
+      }
+    }
     setStatus({ kind: 'saving' })
     try {
-      if (/^https?:\/\//i.test(url)) {
+      if (isWeb) {
         const meta = await window.api.fetchMeta(url)
         const link = await window.api.createLink({
           kind: 'web',
@@ -111,7 +128,10 @@ export function QuickCapturePopup(): JSX.Element {
         <input
           ref={inputRef}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value)
+            if (status.kind === 'confirm-duplicate' || status.kind === 'error') setStatus({ kind: 'idle' })
+          }}
           disabled={saving}
           placeholder="URL 붙여넣기 또는 파일 경로 입력…"
           className="h-10 w-full rounded-md border border-white/10 bg-white/5 px-3 text-body text-white outline-none placeholder:text-ink-dark-muted focus:border-brand disabled:opacity-50"
@@ -132,6 +152,11 @@ export function QuickCapturePopup(): JSX.Element {
         )}
         {status.kind === 'done' && <span className="text-green-400">저장했습니다 — {status.title}</span>}
         {status.kind === 'error' && <span className="text-red-400">{status.message}</span>}
+        {status.kind === 'confirm-duplicate' && (
+          <span className="text-amber-400">
+            이미 저장된 링크입니다 — &lsquo;{status.existingTitle}&rsquo; · Enter를 다시 누르면 그래도 저장
+          </span>
+        )}
         {status.kind === 'idle' && <span className="text-ink-dark-muted">Enter로 저장 · Esc로 닫기</span>}
       </div>
     </div>

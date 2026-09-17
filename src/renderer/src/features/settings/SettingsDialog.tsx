@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, Link2Off, Loader2, Upload } from 'lucide-react'
+import { Download, Keyboard, Link2Off, Loader2, Upload } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { useSettingsStore } from '@/store/settingsStore'
@@ -78,6 +78,21 @@ export function SettingsDialog(): JSX.Element {
         </Button>
       }
     >
+      <div className="mb-1 pb-3">
+        <p className="mb-2 flex items-center gap-1.5 text-body font-medium text-ink-strong">
+          <Keyboard size={15} /> 단축키
+        </p>
+        <div className="space-y-1.5">
+          <KeyRow keys={['Ctrl', 'N']} desc="새 링크 추가" />
+          <KeyRow keys={['Ctrl', 'K']} desc="커맨드 팔레트 열기" />
+          <KeyRow keys={['Esc']} desc="선택 해제 / 열린 창 닫기" />
+          <KeyRow keys={['Ctrl', 'Shift', 'L']} desc="빠른 캡처 팝업 (앱 밖에서도 항상 동작)" />
+          <KeyRow keys={['Shift', '클릭']} desc="링크 목록 범위 선택" />
+          <KeyRow keys={['Ctrl', '클릭']} desc="링크 목록 개별 다중 선택" />
+        </div>
+        <p className="mt-1.5 text-sm text-ink-muted">macOS에서는 Ctrl 대신 ⌘(Cmd)를 씁니다.</p>
+      </div>
+
       <Row
         label="AI 관계 추천"
         desc="링크 상세의 관계 탭에 연관 링크를 추천합니다 (로컬 분석, 오프라인)"
@@ -152,6 +167,24 @@ export function SettingsDialog(): JSX.Element {
         {importMsg && <p className="mt-2 text-sm text-ink-muted">{importMsg}</p>}
       </div>
     </Modal>
+  )
+}
+
+function KeyRow({ keys, desc }: { keys: string[]; desc: string }): JSX.Element {
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <div className="flex shrink-0 items-center gap-1">
+        {keys.map((k, i) => (
+          <span key={i} className="flex items-center gap-1">
+            <kbd className="rounded-sm border border-line bg-list px-1.5 py-0.5 font-mono text-xs text-ink-strong">
+              {k}
+            </kbd>
+            {i < keys.length - 1 && <span className="text-ink-muted">+</span>}
+          </span>
+        ))}
+      </div>
+      <span className="text-ink-muted">{desc}</span>
+    </div>
   )
 }
 
