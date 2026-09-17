@@ -51,6 +51,10 @@ export interface Link {
   fileMtime: number | null
   /** 실제로 열었던(openTarget) 마지막 시각(epoch ms) — 한 번도 안 열었으면 null */
   openedAt: number | null
+  /** kind='web' 링크의 마지막 깨진 링크 검사 시각(epoch ms) — 검사한 적 없으면 null */
+  linkCheckedAt: number | null
+  /** 마지막 검사에서 응답하지 않았으면 true. 검사 전에는 항상 false */
+  linkBroken: boolean
 }
 
 export interface Tag {

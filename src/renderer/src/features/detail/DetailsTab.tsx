@@ -115,6 +115,18 @@ export function DetailsTab({ link }: { link: LinkWithTags }): JSX.Element {
               <AlertTriangle size={11} /> {fileStatus.missing ? '파일 없음' : '파일이 변경됨'}
             </span>
           )}
+          {link.kind === 'web' && link.linkBroken && (
+            <span
+              className="mt-1 inline-flex items-center gap-1 rounded-sm bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-700"
+              title={
+                link.linkCheckedAt
+                  ? `마지막 확인(${formatDate(link.linkCheckedAt)})에서 응답하지 않았습니다.`
+                  : '마지막 확인에서 응답하지 않았습니다.'
+              }
+            >
+              <AlertTriangle size={11} /> 응답 없는 링크
+            </span>
+          )}
         </div>
       )}
       {link.description && <Row label="설명" value={link.description} />}

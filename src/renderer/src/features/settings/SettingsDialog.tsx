@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { Link2Off, Loader2 } from 'lucide-react'
+import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { useSettingsStore } from '@/store/settingsStore'
 import { Modal } from '@/components/ui/Modal'
@@ -7,6 +10,22 @@ export function SettingsDialog(): JSX.Element {
   const open = useUiStore((s) => s.settingsOpen)
   const close = useUiStore((s) => s.closeSettings)
   const s = useSettingsStore()
+  const refresh = useAppStore((s) => s.refresh)
+
+  const [checking, setChecking] = useState(false)
+  const [checkResult, setCheckResult] = useState<{ checked: number; broken: number } | null>(null)
+
+  const runBrokenLinkCheck = async (): Promise<void> => {
+    setChecking(true)
+    setCheckResult(null)
+    try {
+      const res = await window.api.checkBrokenLinks()
+      await refresh()
+      setCheckResult({ checked: res.checked, broken: res.brokenIds.length })
+    } finally {
+      setChecking(false)
+    }
+  }
 
   return (
     <Modal
@@ -44,6 +63,27 @@ export function SettingsDialog(): JSX.Element {
         checked={s.hideUnmatched}
         onChange={s.setHideUnmatched}
       />
+
+      <div className="pt-3">
+        <p className="mb-1 text-body font-medium text-ink-strong">깨진 링크 확인</p>
+        <p className="mb-2 text-sm text-ink-muted">
+          모든 웹 링크의 URL이 아직 살아있는지 확인합니다(HEAD/GET 요청). 링크 수에 따라 시간이
+          걸릴 수 있습니다.
+        </p>
+        <button
+          onClick={() => void runBrokenLinkCheck()}
+          disabled={checking}
+          className="flex items-center gap-1.5 rounded-md border border-line px-3 py-2 text-body text-ink-strong hover:bg-list disabled:opacity-50"
+        >
+          {checking ? <Loader2 size={14} className="animate-spin" /> : <Link2Off size={14} />}
+          {checking ? '확인 중…' : '깨진 링크 확인'}
+        </button>
+        {checkResult && (
+          <p className="mt-2 text-sm text-ink-muted">
+            {checkResult.checked}개 확인, {checkResult.broken}개 응답 없음
+          </p>
+        )}
+      </div>
     </Modal>
   )
 }

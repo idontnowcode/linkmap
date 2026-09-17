@@ -20,6 +20,7 @@ import {
 import { fetchMeta } from '../services/metaFetch'
 import { readTextFileContent, readBinaryFile } from '../services/fileContent'
 import { importFolderFiles, listFolderTree, previewFolderSync, syncFolderTag } from '../services/folderImport'
+import { checkAllBrokenLinks } from '../services/linkHealth'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.graphSnapshot, () => graphRepo.snapshot())
@@ -112,4 +113,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.folderExclusionsSet, (_e, tagId: string, excluded: string[]) =>
     folderExclusionRepo.setForTag(tagId, excluded)
   )
+
+  ipcMain.handle(IPC.linksCheckBroken, () => checkAllBrokenLinks())
 }

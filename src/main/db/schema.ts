@@ -20,7 +20,10 @@ export const links = sqliteTable(
     /** kind='file' 링크를 저장한 시점의 원본 파일 mtime — 외부에서 파일이 바뀌었는지 감지용 */
     fileMtime: integer('file_mtime', { mode: 'timestamp_ms' }),
     /** 실제로 열었을 때(openTarget) 마다 갱신 — "최근 연 링크" 스마트뷰의 기준 */
-    openedAt: integer('opened_at', { mode: 'timestamp_ms' })
+    openedAt: integer('opened_at', { mode: 'timestamp_ms' }),
+    /** kind='web' 링크의 깨진 링크(데드링크) 수동 검사 결과 — 검사 안 했으면 둘 다 null/false */
+    linkCheckedAt: integer('link_checked_at', { mode: 'timestamp_ms' }),
+    linkBroken: integer('link_broken', { mode: 'boolean' }).notNull().default(false)
   },
   (t) => ({
     deletedIdx: index('links_deleted_idx').on(t.deletedAt),
@@ -121,7 +124,9 @@ export const CREATE_TABLES_SQL = `
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     file_mtime INTEGER,
-    opened_at INTEGER
+    opened_at INTEGER,
+    link_checked_at INTEGER,
+    link_broken INTEGER NOT NULL DEFAULT 0
   );
   CREATE INDEX IF NOT EXISTS links_deleted_idx ON links(deleted_at);
   CREATE INDEX IF NOT EXISTS links_favorite_idx ON links(favorite);
@@ -180,5 +185,7 @@ export const MIGRATIONS: string[] = [
   `ALTER TABLE collections ADD COLUMN parent_id TEXT REFERENCES collections(id) ON DELETE CASCADE`,
   `ALTER TABLE tags ADD COLUMN source_path TEXT`,
   `ALTER TABLE links ADD COLUMN file_mtime INTEGER`,
-  `ALTER TABLE links ADD COLUMN opened_at INTEGER`
+  `ALTER TABLE links ADD COLUMN opened_at INTEGER`,
+  `ALTER TABLE links ADD COLUMN link_checked_at INTEGER`,
+  `ALTER TABLE links ADD COLUMN link_broken INTEGER NOT NULL DEFAULT 0`
 ]

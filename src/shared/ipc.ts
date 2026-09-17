@@ -55,7 +55,9 @@ export const IPC = {
   folderSyncPreview: 'folder:syncPreview',
   folderSync: 'folder:sync',
   folderExclusionsGet: 'folder:exclusionsGet',
-  folderExclusionsSet: 'folder:exclusionsSet'
+  folderExclusionsSet: 'folder:exclusionsSet',
+
+  linksCheckBroken: 'links:checkBroken'
 } as const
 
 /** path:readBinary 결과 — 실패 시 data는 null, reason에 사유 표시 */
@@ -106,6 +108,12 @@ export interface FolderSyncResult {
   tag: Tag
   addedCount: number
   removedCount: number
+}
+
+/** 깨진 링크 검사(P7) 결과 요약 */
+export interface CheckBrokenLinksResult {
+  checked: number
+  brokenIds: string[]
 }
 
 /** preload가 contextBridge로 노출하는 API 표면 */
@@ -165,6 +173,9 @@ export interface LinkMapApi {
   folderExclusionsGet(tagId: string): Promise<string[]>
   /** 동기화 제외 목록 전체 교체 */
   folderExclusionsSet(tagId: string, excludedRelativePaths: string[]): Promise<void>
+
+  /** 모든 활성 웹 링크의 생존 여부를 확인해 DB에 기록(수동 실행, 동시성 제한 있음) */
+  checkBrokenLinks(): Promise<CheckBrokenLinksResult>
 }
 
 declare global {

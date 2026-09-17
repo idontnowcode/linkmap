@@ -1,4 +1,4 @@
-import { File, Folder, StickyNote, Star } from 'lucide-react'
+import { AlertTriangle, File, Folder, StickyNote, Star } from 'lucide-react'
 import type { LinkWithTags } from '@shared/types'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
@@ -117,7 +117,12 @@ export function LinkCard({
         <Favicon link={link} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-body font-medium text-ink-strong">{link.title}</p>
+        <p className="flex items-center gap-1 truncate text-body font-medium text-ink-strong">
+          {link.linkBroken && (
+            <AlertTriangle size={12} className="shrink-0 text-amber-600" aria-label="깨진 링크" />
+          )}
+          <span className="truncate">{link.title}</span>
+        </p>
         <p className="truncate text-sm text-ink-muted">
           {link.description || link.domain || link.url}
         </p>

@@ -55,7 +55,9 @@ function toLink(row: LinkRow): Link {
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
     fileMtime: row.fileMtime ? row.fileMtime.getTime() : null,
-    openedAt: row.openedAt ? row.openedAt.getTime() : null
+    openedAt: row.openedAt ? row.openedAt.getTime() : null,
+    linkCheckedAt: row.linkCheckedAt ? row.linkCheckedAt.getTime() : null,
+    linkBroken: row.linkBroken
   }
 }
 
@@ -151,6 +153,25 @@ export const linkRepo = {
   /** 실제로 열었을 때(openTarget) 호출 — "최근 연 링크" 스마트뷰 기준 갱신 */
   async markOpened(id: string): Promise<void> {
     await getDb().update(links).set({ openedAt: new Date() }).where(eq(links.id, id)).run()
+  },
+
+  /** 깨진 링크 검사 결과 기록 */
+  async setLinkHealth(id: string, broken: boolean): Promise<void> {
+    await getDb()
+      .update(links)
+      .set({ linkCheckedAt: new Date(), linkBroken: broken })
+      .where(eq(links.id, id))
+      .run()
+  },
+
+  /** kind='web'인 휴지통 제외 활성 링크 전체(깨진 링크 검사 대상) */
+  async listActiveWeb(): Promise<Link[]> {
+    const rows = await getDb()
+      .select()
+      .from(links)
+      .where(and(eq(links.kind, 'web'), isNull(links.deletedAt)))
+      .all()
+    return rows.map(toLink)
   },
 
   async toggleFavorite(id: string): Promise<Link> {
