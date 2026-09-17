@@ -18,7 +18,7 @@ import type {
   UpdateLinkInput
 } from '@shared/types'
 
-const { links, tags, linkTags, relations, collections, collectionLinks } = schema
+const { links, tags, linkTags, relations, collections, collectionLinks, folderSyncExclusions } = schema
 
 function deriveDomain(url: string): string | null {
   try {
@@ -206,6 +206,29 @@ export const tagRepo = {
   async count(): Promise<number> {
     const rows = await getDb().select({ id: tags.id }).from(tags).all()
     return rows.length
+  }
+}
+
+// ── 폴더 동기화 제외 범위 (P2) ─────────────────────────────
+export const folderExclusionRepo = {
+  async listForTag(tagId: string): Promise<string[]> {
+    const rows = await getDb()
+      .select()
+      .from(folderSyncExclusions)
+      .where(eq(folderSyncExclusions.tagId, tagId))
+      .all()
+    return rows.map((r) => r.relativePath)
+  },
+  /** 전체 교체 — 다이얼로그에서 계산한 최종 제외 목록으로 덮어쓴다. */
+  async setForTag(tagId: string, relativePaths: string[]): Promise<void> {
+    const db = getDb()
+    await db.delete(folderSyncExclusions).where(eq(folderSyncExclusions.tagId, tagId)).run()
+    if (relativePaths.length) {
+      await db
+        .insert(folderSyncExclusions)
+        .values(relativePaths.map((relativePath) => ({ tagId, relativePath })))
+        .run()
+    }
   }
 }
 

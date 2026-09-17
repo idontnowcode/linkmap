@@ -11,6 +11,7 @@ import type {
 } from '@shared/types'
 import {
   collectionRepo,
+  folderExclusionRepo,
   graphRepo,
   linkRepo,
   relationRepo,
@@ -92,4 +93,8 @@ export function registerIpcHandlers(): void {
   )
   ipcMain.handle(IPC.folderSyncPreview, (_e, tagId: string) => previewFolderSync(tagId))
   ipcMain.handle(IPC.folderSync, (_e, tagId: string) => syncFolderTag(tagId))
+  ipcMain.handle(IPC.folderExclusionsGet, (_e, tagId: string) => folderExclusionRepo.listForTag(tagId))
+  ipcMain.handle(IPC.folderExclusionsSet, (_e, tagId: string, excluded: string[]) =>
+    folderExclusionRepo.setForTag(tagId, excluded)
+  )
 }

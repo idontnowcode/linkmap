@@ -13,35 +13,7 @@ import { useUiStore } from '@/store/uiStore'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-
-interface TreeNode {
-  entry: FolderEntry
-  children: TreeNode[]
-}
-
-// entries는 백엔드 walk()가 DFS 전위 순회로 넣어준다(폴더 자신 → 그 하위 전부 → 다음 형제) —
-// 그 보장 덕분에 depth만으로 스택 기반 재구성이 가능하다(경로 문자열을 다시 파싱할 필요 없음).
-function buildTree(entries: FolderEntry[]): TreeNode[] {
-  const roots: TreeNode[] = []
-  const stack: TreeNode[] = []
-  for (const entry of entries) {
-    const node: TreeNode = { entry, children: [] }
-    const parent = entry.depth > 1 ? stack[entry.depth - 2] : undefined
-    if (parent) parent.children.push(node)
-    else roots.push(node)
-    stack.length = entry.depth - 1
-    stack[entry.depth - 1] = node
-  }
-  return roots
-}
-
-function collectFilePaths(node: TreeNode, out: string[]): void {
-  if (!node.entry.isDirectory) {
-    out.push(node.entry.relativePath)
-    return
-  }
-  for (const c of node.children) collectFilePaths(c, out)
-}
+import { buildTree, collectFilePaths, type TreeNode } from './folderTree'
 
 export function FolderImportDialog(): JSX.Element {
   const open = useUiStore((s) => s.folderImportOpen)

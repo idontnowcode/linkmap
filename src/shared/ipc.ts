@@ -50,7 +50,9 @@ export const IPC = {
   folderList: 'folder:list',
   folderImport: 'folder:import',
   folderSyncPreview: 'folder:syncPreview',
-  folderSync: 'folder:sync'
+  folderSync: 'folder:sync',
+  folderExclusionsGet: 'folder:exclusionsGet',
+  folderExclusionsSet: 'folder:exclusionsSet'
 } as const
 
 /** path:readBinary 결과 — 실패 시 data는 null, reason에 사유 표시 */
@@ -149,6 +151,10 @@ export interface LinkMapApi {
   /** 실제로 반영하지 않고 추가/삭제될 항목만 미리 계산 */
   folderSyncPreview(tagId: string): Promise<FolderSyncPreviewResult>
   folderSync(tagId: string): Promise<FolderSyncResult>
+  /** 이 폴더 태그의 동기화 제외 목록(상대경로, 파일 또는 폴더) 조회 */
+  folderExclusionsGet(tagId: string): Promise<string[]>
+  /** 동기화 제외 목록 전체 교체 */
+  folderExclusionsSet(tagId: string, excludedRelativePaths: string[]): Promise<void>
 }
 
 declare global {

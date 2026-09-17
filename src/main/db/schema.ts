@@ -86,6 +86,19 @@ export const collectionLinks = sqliteTable(
   (t) => ({ pk: primaryKey({ columns: [t.collectionId, t.linkId] }) })
 )
 
+/** 폴더 동기화(6.13절) 제외 범위 — tagId(폴더 태그)별로 제외된 상대경로(파일 또는 폴더) 목록.
+ * 폴더 경로가 등록되면 gitignore 스타일로 그 조상 경로에 해당하는 파일도 전부 제외 취급한다. */
+export const folderSyncExclusions = sqliteTable(
+  'folder_sync_exclusions',
+  {
+    tagId: text('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+    relativePath: text('relative_path').notNull()
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.tagId, t.relativePath] }) })
+)
+
 // 런타임 테이블 생성용 DDL (마이그레이션 없이 첫 실행 시 보장)
 export const CREATE_TABLES_SQL = `
   CREATE TABLE IF NOT EXISTS links (
@@ -145,6 +158,12 @@ export const CREATE_TABLES_SQL = `
     collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
     link_id TEXT NOT NULL REFERENCES links(id) ON DELETE CASCADE,
     PRIMARY KEY (collection_id, link_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS folder_sync_exclusions (
+    tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    relative_path TEXT NOT NULL,
+    PRIMARY KEY (tag_id, relative_path)
   );
 `
 

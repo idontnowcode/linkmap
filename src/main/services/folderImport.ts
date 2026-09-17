@@ -12,7 +12,7 @@ import type {
   FolderSyncResult
 } from '@shared/ipc'
 import { TAG_PALETTE, type Tag } from '@shared/types'
-import { linkRepo, linkTagRepo, tagRepo } from '../repositories'
+import { folderExclusionRepo, linkRepo, linkTagRepo, tagRepo } from '../repositories'
 
 // 흔히 수천~수만 개 파일을 갖는 폴더(node_modules, .git 등)를 실수로 고르는 경우를 대비한
 // 안전장치 — 넘으면 결과를 잘라내고 truncated:true를 돌려준다.
@@ -116,6 +116,21 @@ function dirSegmentsOf(relativeFilePath: string): string[] {
   return segments
 }
 
+function normalizeRel(p: string): string {
+  return p.replace(/\\/g, '/')
+}
+
+/** relativePath 자신이나 그 조상 경로가 제외 목록에 있으면 true (gitignore 스타일). */
+function isPathExcluded(relativePath: string, excluded: ReadonlySet<string>): boolean {
+  if (excluded.size === 0) return false
+  const norm = normalizeRel(relativePath)
+  for (const ex of excluded) {
+    const exNorm = normalizeRel(ex)
+    if (norm === exNorm || norm.startsWith(`${exNorm}/`)) return true
+  }
+  return false
+}
+
 /** 선택된 상대경로들을 일괄로 링크 생성 + 조상 폴더 전체의 계층 태그 부착. 이미 활성 링크가 있으면 재사용. */
 export async function importFolderFiles(
   rootPath: string,
@@ -149,13 +164,16 @@ export async function previewFolderSync(tagId: string): Promise<FolderSyncPrevie
   if (!tag.sourcePath) throw new Error('invalid_input: not_a_folder_tag')
 
   const { entries } = await listFolderTree(tag.sourcePath)
-  const files = entries.filter((e) => !e.isDirectory)
+  const excluded = new Set(await folderExclusionRepo.listForTag(tagId))
+  const files = entries.filter((e) => !e.isDirectory && !isPathExcluded(e.relativePath, excluded))
   const currentPaths = new Set(files.map((e) => e.absolutePath))
 
   const taggedLinkIds = await linkTagRepo.linkIdsForTag(tagId)
   const trackedLinks = await linkRepo.listActiveByIds(taggedLinkIds)
   const trackedPaths = new Set(trackedLinks.map((l) => l.url))
 
+  // 제외 설정으로 새로 빠진, 기존에 추적 중이던 파일도 "삭제됨"과 동일하게 취급된다
+  // (currentPaths에서 빠지므로) — 별도 UI 없이 기존 미리보기 흐름을 그대로 재사용.
   const added = files.filter((e) => !trackedPaths.has(e.absolutePath))
   const removed = trackedLinks
     .filter((l) => !currentPaths.has(l.url))
@@ -172,7 +190,8 @@ export async function syncFolderTag(tagId: string): Promise<FolderSyncResult> {
   if (!tag.sourcePath) throw new Error('invalid_input: not_a_folder_tag')
 
   const { entries } = await listFolderTree(tag.sourcePath)
-  const files = entries.filter((e) => !e.isDirectory)
+  const excluded = new Set(await folderExclusionRepo.listForTag(tagId))
+  const files = entries.filter((e) => !e.isDirectory && !isPathExcluded(e.relativePath, excluded))
   const currentPaths = new Set(files.map((e) => e.absolutePath))
 
   const taggedLinkIds = await linkTagRepo.linkIdsForTag(tagId)

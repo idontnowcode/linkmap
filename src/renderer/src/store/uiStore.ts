@@ -37,6 +37,8 @@ interface UiState {
   folderImportOpen: boolean
   /** 동기화 미리보기 다이얼로그 대상 태그 id — null이면 닫힘 */
   folderSyncTagId: string | null
+  /** 동기화 범위(제외 목록) 편집 다이얼로그 대상 태그 id — null이면 닫힘 */
+  folderExclusionTagId: string | null
 
   selectNode: (id: string | null, kind?: NodeKind | null) => void
   setTab: (tab: DetailTab) => void
@@ -62,6 +64,8 @@ interface UiState {
   closeFolderImport: () => void
   openFolderSync: (tagId: string) => void
   closeFolderSync: () => void
+  openFolderExclusion: (tagId: string) => void
+  closeFolderExclusion: () => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -89,6 +93,7 @@ export const useUiStore = create<UiState>((set) => ({
   settingsOpen: false,
   folderImportOpen: false,
   folderSyncTagId: null,
+  folderExclusionTagId: null,
 
   selectNode: (id, kind = 'link') => set({ selectedNodeId: id, selectedKind: id ? kind : null }),
   setTab: (tab) => set({ activeTab: tab }),
@@ -116,5 +121,7 @@ export const useUiStore = create<UiState>((set) => ({
   openFolderImport: () => set({ folderImportOpen: true }),
   closeFolderImport: () => set({ folderImportOpen: false }),
   openFolderSync: (tagId) => set({ folderSyncTagId: tagId }),
-  closeFolderSync: () => set({ folderSyncTagId: null })
+  closeFolderSync: () => set({ folderSyncTagId: null }),
+  openFolderExclusion: (tagId) => set({ folderExclusionTagId: tagId }),
+  closeFolderExclusion: () => set({ folderExclusionTagId: null })
 }))

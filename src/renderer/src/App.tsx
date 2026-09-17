@@ -10,6 +10,7 @@ import { CollectionPickerDialog } from './features/collections/CollectionPickerD
 import { SettingsDialog } from './features/settings/SettingsDialog'
 import { FolderImportDialog } from './features/links/FolderImportDialog'
 import { FolderSyncPreviewDialog } from './features/links/FolderSyncPreviewDialog'
+import { FolderSyncExclusionDialog } from './features/links/FolderSyncExclusionDialog'
 
 export default function App(): JSX.Element {
   const load = useAppStore((s) => s.load)
@@ -146,6 +147,7 @@ export default function App(): JSX.Element {
       <SettingsDialog />
       <FolderImportDialog />
       <FolderSyncPreviewDialog />
+      <FolderSyncExclusionDialog />
       {dragging && (
         <div className="pointer-events-none fixed inset-0 z-40 grid place-items-center bg-brand/10 backdrop-blur-sm">
           <div className="rounded-lg border-2 border-dashed border-brand bg-white px-8 py-6 text-h text-brand shadow-pop">

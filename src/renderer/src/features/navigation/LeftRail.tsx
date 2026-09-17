@@ -6,6 +6,7 @@ import {
   Folder,
   FolderInput,
   Link2,
+  ListFilter,
   Pencil,
   Plus,
   RefreshCw,
@@ -49,6 +50,7 @@ export function LeftRail(): JSX.Element {
   const openSettings = useUiStore((s) => s.openSettings)
   const openFolderImport = useUiStore((s) => s.openFolderImport)
   const openFolderSync = useUiStore((s) => s.openFolderSync)
+  const openFolderExclusion = useUiStore((s) => s.openFolderExclusion)
 
   const [menu, setMenu] = useState<RailMenu | null>(null)
   const [tagsCollapsed, setTagsCollapsed] = useState(false)
@@ -169,6 +171,18 @@ export function LeftRail(): JSX.Element {
         >
           {leafNameOf(node)}
         </span>
+        {isFolderTag && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              openFolderExclusion(t.id)
+            }}
+            title="동기화 범위 편집 (제외할 파일·폴더 선택)"
+            className="hidden shrink-0 text-ink-dark-muted hover:text-white group-hover/tag:block"
+          >
+            <ListFilter size={13} />
+          </button>
+        )}
         {isFolderTag && (
           <button
             onClick={(e) => {

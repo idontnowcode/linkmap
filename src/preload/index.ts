@@ -42,7 +42,10 @@ const api: LinkMapApi = {
   folderImport: (rootPath, relativePaths) =>
     ipcRenderer.invoke(IPC.folderImport, rootPath, relativePaths),
   folderSyncPreview: (tagId) => ipcRenderer.invoke(IPC.folderSyncPreview, tagId),
-  folderSync: (tagId) => ipcRenderer.invoke(IPC.folderSync, tagId)
+  folderSync: (tagId) => ipcRenderer.invoke(IPC.folderSync, tagId),
+  folderExclusionsGet: (tagId) => ipcRenderer.invoke(IPC.folderExclusionsGet, tagId),
+  folderExclusionsSet: (tagId, excludedRelativePaths) =>
+    ipcRenderer.invoke(IPC.folderExclusionsSet, tagId, excludedRelativePaths)
 }
 
 contextBridge.exposeInMainWorld('api', api)
