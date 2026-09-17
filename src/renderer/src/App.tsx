@@ -23,6 +23,14 @@ export default function App(): JSX.Element {
     void load()
   }, [load])
 
+  // 빠른 캡처 팝업(P12) 등 다른 창에서 링크가 생겼을 때 메인 창 스냅샷 새로고침
+  useEffect(() => {
+    const unsubscribe = window.api.onGraphChanged(() => {
+      void useAppStore.getState().refresh()
+    })
+    return unsubscribe
+  }, [])
+
   // 전역 단축키
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {

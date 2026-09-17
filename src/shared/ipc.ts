@@ -60,7 +60,10 @@ export const IPC = {
   linksCheckBroken: 'links:checkBroken',
 
   dataExport: 'data:export',
-  dataImport: 'data:import'
+  dataImport: 'data:import',
+
+  /** main -> renderer 일방향 이벤트(요청/응답 아님) — 다른 창(빠른 캡처 팝업 등)에서 데이터가 바뀌었을 때 알림 */
+  graphChanged: 'graph:changed'
 } as const
 
 /** path:readBinary 결과 — 실패 시 data는 null, reason에 사유 표시 */
@@ -204,6 +207,9 @@ export interface LinkMapApi {
   exportData(): Promise<DataExportResult>
   /** JSON 파일을 선택해 현재 DB에 추가(add-only, 같은 id는 건너뜀) */
   importData(): Promise<DataImportResult>
+
+  /** 다른 창(빠른 캡처 팝업 등)에서 데이터가 바뀌었을 때 알림 수신. 구독 해제 함수를 반환 */
+  onGraphChanged(callback: () => void): () => void
 }
 
 declare global {

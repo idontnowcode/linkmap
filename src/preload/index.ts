@@ -53,7 +53,13 @@ const api: LinkMapApi = {
   checkBrokenLinks: () => ipcRenderer.invoke(IPC.linksCheckBroken),
 
   exportData: () => ipcRenderer.invoke(IPC.dataExport),
-  importData: () => ipcRenderer.invoke(IPC.dataImport)
+  importData: () => ipcRenderer.invoke(IPC.dataImport),
+
+  onGraphChanged: (callback) => {
+    const listener = (): void => callback()
+    ipcRenderer.on(IPC.graphChanged, listener)
+    return () => ipcRenderer.removeListener(IPC.graphChanged, listener)
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -22,12 +22,18 @@ import { readTextFileContent, readBinaryFile } from '../services/fileContent'
 import { importFolderFiles, listFolderTree, previewFolderSync, syncFolderTag } from '../services/folderImport'
 import { checkAllBrokenLinks } from '../services/linkHealth'
 import { exportAllData, importAllData, type ExportedData } from '../services/dataPortability'
+import { broadcastGraphChanged } from '../windowEvents'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.graphSnapshot, () => graphRepo.snapshot())
   ipcMain.handle(IPC.counts, () => graphRepo.counts())
 
-  ipcMain.handle(IPC.linkCreate, (_e, input: CreateLinkInput) => linkRepo.create(input))
+  ipcMain.handle(IPC.linkCreate, async (_e, input: CreateLinkInput) => {
+    const link = await linkRepo.create(input)
+    // 빠른 캡처 팝업(P12) 등 다른 창에서 만든 링크도 메인 창이 알아채고 새로고침하도록 알림
+    broadcastGraphChanged()
+    return link
+  })
   ipcMain.handle(IPC.linkUpdate, (_e, id: string, patch: UpdateLinkInput) =>
     linkRepo.update(id, patch)
   )
