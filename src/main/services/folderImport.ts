@@ -4,7 +4,13 @@
 import { readdir } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
 import { basename, join, relative } from 'node:path'
-import type { FolderEntry, FolderImportResult, FolderListResult, FolderSyncResult } from '@shared/ipc'
+import type {
+  FolderEntry,
+  FolderImportResult,
+  FolderListResult,
+  FolderSyncPreviewResult,
+  FolderSyncResult
+} from '@shared/ipc'
 import { linkRepo, linkTagRepo, tagRepo } from '../repositories'
 
 // 흔히 수천~수만 개 파일을 갖는 폴더(node_modules, .git 등)를 실수로 고르는 경우를 대비한
@@ -12,7 +18,14 @@ import { linkRepo, linkTagRepo, tagRepo } from '../repositories'
 const MAX_ENTRIES = 3000
 const SKIP_DIR_NAMES = new Set(['.git', 'node_modules', '.svn', '.hg', '__pycache__'])
 
-async function walk(rootPath: string, dir: string, entries: FolderEntry[]): Promise<void> {
+// 폴더 자체도 항목으로 넣는다(트리 UI가 파일 경로 문자열만으로는 빈 폴더·펼침 상태를 표현할
+// 수 없어서) — depth는 루트 바로 아래가 1.
+async function walk(
+  rootPath: string,
+  dir: string,
+  depth: number,
+  entries: FolderEntry[]
+): Promise<void> {
   let items: Dirent[]
   try {
     items = await readdir(dir, { withFileTypes: true })
@@ -21,21 +34,22 @@ async function walk(rootPath: string, dir: string, entries: FolderEntry[]): Prom
   }
   for (const item of items) {
     if (entries.length >= MAX_ENTRIES) return
+    const absolutePath = join(dir, item.name)
     if (item.isDirectory()) {
       if (item.name.startsWith('.') || SKIP_DIR_NAMES.has(item.name)) continue
-      await walk(rootPath, join(dir, item.name), entries)
+      entries.push({ relativePath: relative(rootPath, absolutePath), absolutePath, isDirectory: true, depth })
+      await walk(rootPath, absolutePath, depth + 1, entries)
     } else if (item.isFile()) {
-      const absolutePath = join(dir, item.name)
-      entries.push({ relativePath: relative(rootPath, absolutePath), absolutePath })
+      entries.push({ relativePath: relative(rootPath, absolutePath), absolutePath, isDirectory: false, depth })
     }
   }
 }
 
-/** rootPath 아래 모든 파일을 재귀 나열(디렉터리 자체는 제외). 점폴더/흔한 대용량 폴더는 건너뜀. */
+/** rootPath 아래 모든 파일·폴더를 재귀 나열. 점폴더/흔한 대용량 폴더는 건너뜀. */
 export async function listFolderTree(rootPath: string): Promise<FolderListResult> {
   if (!rootPath) throw new Error('invalid_input: path_required')
   const entries: FolderEntry[] = []
-  await walk(rootPath, rootPath, entries)
+  await walk(rootPath, rootPath, 1, entries)
   return {
     root: rootPath,
     entries: entries.slice(0, MAX_ENTRIES),
@@ -75,6 +89,29 @@ export async function importFolderFiles(
   return { tag, created, alreadyLinked }
 }
 
+/** 폴더 재스캔 결과와 현재 추적 중인 링크를 비교만 하고, 아무것도 반영하지 않는다(New/Deleted 미리보기용). */
+export async function previewFolderSync(tagId: string): Promise<FolderSyncPreviewResult> {
+  const tag = await tagRepo.get(tagId)
+  if (!tag) throw new Error('invalid_input: unknown_tag')
+  if (!tag.sourcePath) throw new Error('invalid_input: not_a_folder_tag')
+
+  const { entries } = await listFolderTree(tag.sourcePath)
+  const files = entries.filter((e) => !e.isDirectory)
+  const currentPaths = new Set(files.map((e) => e.absolutePath))
+
+  const taggedLinkIds = await linkTagRepo.linkIdsForTag(tagId)
+  const trackedLinks = await linkRepo.listActiveByIds(taggedLinkIds)
+  const trackedPaths = new Set(trackedLinks.map((l) => l.url))
+
+  const added = files.filter((e) => !trackedPaths.has(e.absolutePath))
+  const removed = trackedLinks
+    .filter((l) => !currentPaths.has(l.url))
+    .map((l) => ({ linkId: l.id, title: l.title, url: l.url }))
+  const unchangedCount = trackedLinks.length - removed.length
+
+  return { tagId, added, removed, unchangedCount }
+}
+
 /** 이미 가져온 폴더(태그)를 재스캔 — 추가된 파일은 링크 생성, 삭제된 파일은 링크를 휴지통으로. */
 export async function syncFolderTag(tagId: string): Promise<FolderSyncResult> {
   const tag = await tagRepo.get(tagId)
@@ -82,14 +119,15 @@ export async function syncFolderTag(tagId: string): Promise<FolderSyncResult> {
   if (!tag.sourcePath) throw new Error('invalid_input: not_a_folder_tag')
 
   const { entries } = await listFolderTree(tag.sourcePath)
-  const currentPaths = new Set(entries.map((e) => e.absolutePath))
+  const files = entries.filter((e) => !e.isDirectory)
+  const currentPaths = new Set(files.map((e) => e.absolutePath))
 
   const taggedLinkIds = await linkTagRepo.linkIdsForTag(tagId)
   const trackedLinks = await linkRepo.listActiveByIds(taggedLinkIds)
   const trackedPaths = new Set(trackedLinks.map((l) => l.url))
 
   let addedCount = 0
-  for (const entry of entries) {
+  for (const entry of files) {
     if (trackedPaths.has(entry.absolutePath)) continue
     const existing = await linkRepo.findActiveByUrl(entry.absolutePath)
     const link =

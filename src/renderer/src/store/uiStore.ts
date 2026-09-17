@@ -34,6 +34,8 @@ interface UiState {
   collectionPickerLinkId: string | null
   settingsOpen: boolean
   folderImportOpen: boolean
+  /** 동기화 미리보기 다이얼로그 대상 태그 id — null이면 닫힘 */
+  folderSyncTagId: string | null
 
   selectNode: (id: string | null, kind?: NodeKind | null) => void
   setTab: (tab: DetailTab) => void
@@ -56,6 +58,8 @@ interface UiState {
   closeSettings: () => void
   openFolderImport: () => void
   closeFolderImport: () => void
+  openFolderSync: (tagId: string) => void
+  closeFolderSync: () => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -81,6 +85,7 @@ export const useUiStore = create<UiState>((set) => ({
   collectionPickerLinkId: null,
   settingsOpen: false,
   folderImportOpen: false,
+  folderSyncTagId: null,
 
   selectNode: (id, kind = 'link') => set({ selectedNodeId: id, selectedKind: id ? kind : null }),
   setTab: (tab) => set({ activeTab: tab }),
@@ -106,5 +111,7 @@ export const useUiStore = create<UiState>((set) => ({
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
   openFolderImport: () => set({ folderImportOpen: true }),
-  closeFolderImport: () => set({ folderImportOpen: false })
+  closeFolderImport: () => set({ folderImportOpen: false }),
+  openFolderSync: (tagId) => set({ folderSyncTagId: tagId }),
+  closeFolderSync: () => set({ folderSyncTagId: null })
 }))

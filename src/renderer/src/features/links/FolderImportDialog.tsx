@@ -2,12 +2,46 @@
 // 프리미티브(Modal/Button/Input)로 재작성. 컬렉션(트리)을 대체하지 않는 "추가" 기능 —
 // 폴더를 골라 그 안의 파일들(재귀, 최대 3000개)을 체크박스로 선택해 링크로 저장하고,
 // 폴더명을 딴 태그(source_path 보유)로 묶는다. 이후 LeftRail의 동기화 버튼으로 재사용.
-import { useState } from 'react'
+//
+// 2026-09-17: 평면 목록 → 트리 UI로 개편. 기본 전체 선택(선택 해제 방식)으로 바꾸고,
+// 3단계 아래(depth>=3인 폴더)는 기본 접힘 — 폴더가 큰 경우 첫 화면이 너무 길어지는 걸 막는다.
+import { useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, File, Folder } from 'lucide-react'
 import type { FolderEntry } from '@shared/ipc'
 import { useAppStore } from '@/store/appStore'
 import { useUiStore } from '@/store/uiStore'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { cn } from '@/lib/utils'
+
+interface TreeNode {
+  entry: FolderEntry
+  children: TreeNode[]
+}
+
+// entries는 백엔드 walk()가 DFS 전위 순회로 넣어준다(폴더 자신 → 그 하위 전부 → 다음 형제) —
+// 그 보장 덕분에 depth만으로 스택 기반 재구성이 가능하다(경로 문자열을 다시 파싱할 필요 없음).
+function buildTree(entries: FolderEntry[]): TreeNode[] {
+  const roots: TreeNode[] = []
+  const stack: TreeNode[] = []
+  for (const entry of entries) {
+    const node: TreeNode = { entry, children: [] }
+    const parent = entry.depth > 1 ? stack[entry.depth - 2] : undefined
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+    stack.length = entry.depth - 1
+    stack[entry.depth - 1] = node
+  }
+  return roots
+}
+
+function collectFilePaths(node: TreeNode, out: string[]): void {
+  if (!node.entry.isDirectory) {
+    out.push(node.entry.relativePath)
+    return
+  }
+  for (const c of node.children) collectFilePaths(c, out)
+}
 
 export function FolderImportDialog(): JSX.Element {
   const open = useUiStore((s) => s.folderImportOpen)
@@ -18,16 +52,21 @@ export function FolderImportDialog(): JSX.Element {
   const [entries, setEntries] = useState<FolderEntry[]>([])
   const [truncated, setTruncated] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{ created: number; alreadyLinked: number } | null>(null)
+
+  const tree = useMemo(() => buildTree(entries), [entries])
+  const allFilePaths = useMemo(() => entries.filter((e) => !e.isDirectory).map((e) => e.relativePath), [entries])
 
   const reset = (): void => {
     setRoot(null)
     setEntries([])
     setTruncated(false)
     setSelected(new Set())
+    setCollapsed(new Set())
     setError(null)
     setResult(null)
   }
@@ -49,7 +88,10 @@ export function FolderImportDialog(): JSX.Element {
       setRoot(res.root)
       setEntries(res.entries)
       setTruncated(res.truncated)
-      setSelected(new Set())
+      // 기본 전체 선택(옵트아웃) — 체크 해제한 것만 안 만든다.
+      setSelected(new Set(res.entries.filter((e) => !e.isDirectory).map((e) => e.relativePath)))
+      // 3단계까지는 펼치고, 그 아래(depth>=3인 폴더)는 접어둔다.
+      setCollapsed(new Set(res.entries.filter((e) => e.isDirectory && e.depth >= 3).map((e) => e.relativePath)))
     } catch {
       setError('폴더를 읽지 못했습니다.')
     } finally {
@@ -57,7 +99,7 @@ export function FolderImportDialog(): JSX.Element {
     }
   }
 
-  const toggle = (relativePath: string): void => {
+  const toggleFile = (relativePath: string): void => {
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(relativePath)) next.delete(relativePath)
@@ -66,10 +108,28 @@ export function FolderImportDialog(): JSX.Element {
     })
   }
 
+  const toggleFolder = (node: TreeNode): void => {
+    const paths: string[] = []
+    collectFilePaths(node, paths)
+    const allSelected = paths.every((p) => selected.has(p))
+    setSelected((prev) => {
+      const next = new Set(prev)
+      for (const p of paths) (allSelected ? next.delete(p) : next.add(p))
+      return next
+    })
+  }
+
   const toggleAll = (): void => {
-    setSelected((prev) =>
-      prev.size === entries.length ? new Set() : new Set(entries.map((e) => e.relativePath))
-    )
+    setSelected((prev) => (prev.size === allFilePaths.length ? new Set() : new Set(allFilePaths)))
+  }
+
+  const toggleCollapse = (relativePath: string): void => {
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(relativePath)) next.delete(relativePath)
+      else next.add(relativePath)
+      return next
+    })
   }
 
   const handleImport = async (): Promise<void> => {
@@ -87,12 +147,75 @@ export function FolderImportDialog(): JSX.Element {
     }
   }
 
+  const renderNode = (node: TreeNode): JSX.Element => {
+    const { entry } = node
+    if (!entry.isDirectory) {
+      return (
+        <label
+          key={entry.relativePath}
+          style={{ paddingLeft: 10 + entry.depth * 16 }}
+          className="flex cursor-pointer items-center gap-1.5 py-1 pr-2 text-sm hover:bg-list"
+        >
+          <input
+            type="checkbox"
+            checked={selected.has(entry.relativePath)}
+            onChange={() => toggleFile(entry.relativePath)}
+          />
+          <File size={13} className="shrink-0 text-ink-muted" />
+          <span className="truncate text-ink-strong">{entry.relativePath.split(/[\\/]/).pop()}</span>
+        </label>
+      )
+    }
+
+    const filePaths: string[] = []
+    collectFilePaths(node, filePaths)
+    const selectedCount = filePaths.filter((p) => selected.has(p)).length
+    const state: 'all' | 'none' | 'some' =
+      filePaths.length === 0 || selectedCount === 0 ? 'none' : selectedCount === filePaths.length ? 'all' : 'some'
+    const isCollapsed = collapsed.has(entry.relativePath)
+
+    return (
+      <div key={entry.relativePath}>
+        <div
+          style={{ paddingLeft: 10 + entry.depth * 16 }}
+          className="flex items-center gap-1.5 py-1 pr-2 text-sm hover:bg-list"
+        >
+          <button
+            type="button"
+            onClick={() => toggleCollapse(entry.relativePath)}
+            className="shrink-0 text-ink-muted hover:text-ink-strong"
+          >
+            {isCollapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+          </button>
+          <input
+            type="checkbox"
+            checked={state === 'all'}
+            ref={(el) => el && (el.indeterminate = state === 'some')}
+            onChange={() => toggleFolder(node)}
+          />
+          <Folder size={13} className="shrink-0 text-ink-muted" />
+          <button
+            type="button"
+            onClick={() => toggleCollapse(entry.relativePath)}
+            className="truncate text-left font-medium text-ink-strong"
+          >
+            {entry.relativePath.split(/[\\/]/).pop()}
+          </button>
+          <span className="ml-auto shrink-0 text-xs text-ink-muted">
+            {selectedCount}/{filePaths.length}
+          </span>
+        </div>
+        {!isCollapsed && node.children.map((c) => renderNode(c))}
+      </div>
+    )
+  }
+
   return (
     <Modal
       open={open}
       onClose={handleClose}
       title="폴더 가져오기"
-      width={520}
+      width={560}
       footer={
         result ? (
           <Button onClick={handleClose}>닫기</Button>
@@ -118,9 +241,9 @@ export function FolderImportDialog(): JSX.Element {
       ) : !root ? (
         <div>
           <p className="mb-3 text-sm text-ink-muted">
-            폴더를 선택하면 안의 파일들(하위 폴더 포함, 최대 3000개)을 체크박스로 골라 링크로
-            저장하고, 폴더 이름을 딴 태그로 묶습니다. 이후 태그 옆의 동기화 버튼으로 변경 사항을
-            다시 반영할 수 있습니다.
+            폴더를 선택하면 안의 파일들(하위 폴더 포함, 최대 3000개)이 트리로 표시됩니다. 기본적으로
+            전체 선택된 상태이며, 체크 해제한 항목은 링크로 만들지 않습니다. 폴더 이름을 딴 태그로
+            묶고, 이후 태그 옆의 동기화 버튼으로 변경 사항을 다시 확인할 수 있습니다.
           </p>
           <Button block onClick={() => void pickFolder()} disabled={loading}>
             {loading ? '읽는 중…' : '폴더 선택'}
@@ -140,22 +263,15 @@ export function FolderImportDialog(): JSX.Element {
                 onClick={toggleAll}
                 className="mb-2 rounded-sm px-2 py-1 text-sm text-ink-muted hover:bg-list hover:text-ink-strong"
               >
-                {selected.size === entries.length ? '전체 해제' : '전체 선택'}
+                {selected.size === allFilePaths.length ? '전체 해제' : '전체 선택'}
               </button>
-              <div className="max-h-72 overflow-y-auto rounded-md border border-line">
-                {entries.map((e) => (
-                  <label
-                    key={e.relativePath}
-                    className="flex cursor-pointer items-center gap-2 border-b border-line px-3 py-1.5 text-sm last:border-0 hover:bg-list"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selected.has(e.relativePath)}
-                      onChange={() => toggle(e.relativePath)}
-                    />
-                    <span className="truncate text-ink-strong">{e.relativePath}</span>
-                  </label>
-                ))}
+              <div
+                className={cn(
+                  'max-h-80 overflow-y-auto rounded-md border border-line py-1',
+                  loading && 'opacity-50'
+                )}
+              >
+                {tree.map((n) => renderNode(n))}
               </div>
             </>
           )}

@@ -49,6 +49,7 @@ export const IPC = {
 
   folderList: 'folder:list',
   folderImport: 'folder:import',
+  folderSyncPreview: 'folder:syncPreview',
   folderSync: 'folder:sync'
 } as const
 
@@ -59,10 +60,12 @@ export interface ReadBinaryResult {
   reason?: 'not_found' | 'too_large' | 'unsupported' | 'error'
 }
 
-/** folder:list 결과 항목 */
+/** folder:list 결과 항목 — 파일뿐 아니라 폴더 자체도 포함(트리 렌더링용). depth 1 = 루트 바로 아래 */
 export interface FolderEntry {
   relativePath: string
   absolutePath: string
+  isDirectory: boolean
+  depth: number
 }
 
 export interface FolderListResult {
@@ -75,6 +78,23 @@ export interface FolderImportResult {
   tag: Tag
   created: number
   alreadyLinked: number
+}
+
+/** folder:syncPreview 결과 — 아무것도 반영하지 않고 변경분만 계산해 보여준다(New/Deleted 미리보기용) */
+export interface FolderSyncPreviewEntry {
+  relativePath: string
+  absolutePath: string
+}
+export interface FolderSyncPreviewRemoved {
+  linkId: string
+  title: string
+  url: string
+}
+export interface FolderSyncPreviewResult {
+  tagId: string
+  added: FolderSyncPreviewEntry[]
+  removed: FolderSyncPreviewRemoved[]
+  unchangedCount: number
 }
 
 export interface FolderSyncResult {
@@ -126,6 +146,8 @@ export interface LinkMapApi {
   // 폴더 가져오기/동기화
   folderList(rootPath: string): Promise<FolderListResult>
   folderImport(rootPath: string, relativePaths: string[]): Promise<FolderImportResult>
+  /** 실제로 반영하지 않고 추가/삭제될 항목만 미리 계산 */
+  folderSyncPreview(tagId: string): Promise<FolderSyncPreviewResult>
   folderSync(tagId: string): Promise<FolderSyncResult>
 }
 

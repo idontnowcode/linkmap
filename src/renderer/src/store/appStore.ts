@@ -8,6 +8,7 @@ import type {
   Tag,
   UpdateLinkInput
 } from '@shared/types'
+import type { FolderSyncPreviewResult } from '@shared/ipc'
 
 interface AppState {
   loaded: boolean
@@ -47,6 +48,7 @@ interface AppState {
   bulkRemoveFromCollection: (linkIds: string[], collectionId: string) => Promise<void>
 
   /** 폴더 태그(source_path 보유)를 재스캔해 추가/삭제된 파일을 링크에 반영 */
+  previewSyncFolderTag: (tagId: string) => Promise<FolderSyncPreviewResult>
   syncFolderTag: (tagId: string) => Promise<{ addedCount: number; removedCount: number }>
 }
 
@@ -206,6 +208,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     for (const id of linkIds) await window.api.removeLinkFromCollection(collectionId, id)
     await get().refresh()
   },
+
+  previewSyncFolderTag: (tagId) => window.api.folderSyncPreview(tagId),
 
   syncFolderTag: async (tagId) => {
     const result = await window.api.folderSync(tagId)

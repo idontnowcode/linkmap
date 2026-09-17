@@ -35,7 +35,6 @@ export function LeftRail(): JSX.Element {
   const tags = useAppStore((s) => s.snapshot.tags)
   const counts = useAppStore((s) => s.counts)
   const deleteTag = useAppStore((s) => s.deleteTag)
-  const syncFolderTag = useAppStore((s) => s.syncFolderTag)
   const bulkAddTag = useAppStore((s) => s.bulkAddTag)
   const activeView = useUiStore((s) => s.activeView)
   const setView = useUiStore((s) => s.setView)
@@ -43,11 +42,11 @@ export function LeftRail(): JSX.Element {
   const openTagForm = useUiStore((s) => s.openTagForm)
   const openSettings = useUiStore((s) => s.openSettings)
   const openFolderImport = useUiStore((s) => s.openFolderImport)
+  const openFolderSync = useUiStore((s) => s.openFolderSync)
 
   const [menu, setMenu] = useState<RailMenu | null>(null)
   const [tagsCollapsed, setTagsCollapsed] = useState(false)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
-  const [syncingTagId, setSyncingTagId] = useState<string | null>(null)
   const [tagNodesCollapsed, setTagNodesCollapsed] = useState<Set<string>>(new Set())
 
   // onDragLeave 하나로는 못 막는 경우(드래그 중 Esc, 창 밖으로 나갔다 놓임 등)까지 포함해
@@ -69,21 +68,6 @@ export function LeftRail(): JSX.Element {
       n.has(id) ? n.delete(id) : n.add(id)
       return n
     })
-
-  const runSync = async (tagId: string): Promise<void> => {
-    if (syncingTagId) return
-    setSyncingTagId(tagId)
-    try {
-      const { addedCount, removedCount } = await syncFolderTag(tagId)
-      if (addedCount || removedCount) {
-        alert(`동기화 완료 — 추가 ${addedCount}개, 휴지통 이동 ${removedCount}개`)
-      }
-    } catch {
-      alert('폴더 동기화에 실패했습니다.')
-    } finally {
-      setSyncingTagId(null)
-    }
-  }
 
   const removeItem = (m: RailMenu): void => {
     if (!confirm(`'${m.name}' 태그를 삭제할까요? (링크 자체는 보존)`)) return
@@ -240,12 +224,12 @@ export function LeftRail(): JSX.Element {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            void runSync(t.id)
+                            openFolderSync(t.id)
                           }}
-                          title="폴더 동기화 (추가/삭제된 파일 반영)"
+                          title="폴더 동기화 (변경 사항 미리보기)"
                           className="hidden shrink-0 text-ink-dark-muted hover:text-white group-hover/tag:block"
                         >
-                          <RefreshCw size={13} className={syncingTagId === t.id ? 'animate-spin' : ''} />
+                          <RefreshCw size={13} />
                         </button>
                       )}
                       <span

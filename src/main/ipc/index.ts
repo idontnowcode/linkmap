@@ -18,7 +18,7 @@ import {
 } from '../repositories'
 import { fetchMeta } from '../services/metaFetch'
 import { readTextFileContent, readBinaryFile } from '../services/fileContent'
-import { importFolderFiles, listFolderTree, syncFolderTag } from '../services/folderImport'
+import { importFolderFiles, listFolderTree, previewFolderSync, syncFolderTag } from '../services/folderImport'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.graphSnapshot, () => graphRepo.snapshot())
@@ -90,5 +90,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(IPC.folderImport, (_e, rootPath: string, relativePaths: string[]) =>
     importFolderFiles(rootPath, relativePaths)
   )
+  ipcMain.handle(IPC.folderSyncPreview, (_e, tagId: string) => previewFolderSync(tagId))
   ipcMain.handle(IPC.folderSync, (_e, tagId: string) => syncFolderTag(tagId))
 }
