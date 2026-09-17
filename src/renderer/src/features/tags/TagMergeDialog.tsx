@@ -19,11 +19,13 @@ export function TagMergeDialog(): JSX.Element {
   const [query, setQuery] = useState('')
   const [targetId, setTargetId] = useState<string | null>(null)
   const [merging, setMerging] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!sourceId) {
       setQuery('')
       setTargetId(null)
+      setError(null)
     }
   }, [sourceId])
 
@@ -46,9 +48,13 @@ export function TagMergeDialog(): JSX.Element {
     if (!sourceId || !targetId || merging) return
     if (!confirm(`'${sourceTag?.name}' 태그를 '${targetTag?.name}'(으)로 병합할까요? 되돌릴 수 없습니다.`)) return
     setMerging(true)
+    setError(null)
     try {
       await mergeTag(sourceId, targetId)
       close()
+    } catch {
+      // 되돌릴 수 없는 작업이라 실패했을 때 조용히 넘어가면 안 됨(eval-rubric 지적, 2026-09-18)
+      setError('병합에 실패했습니다. 다시 시도해 주세요.')
     } finally {
       setMerging(false)
     }
@@ -112,6 +118,8 @@ export function TagMergeDialog(): JSX.Element {
           {sourceTag?.name} <ArrowRight size={13} className="text-ink-muted" /> {targetTag.name}
         </p>
       )}
+
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </Modal>
   )
 }

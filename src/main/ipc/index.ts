@@ -145,8 +145,11 @@ export function registerIpcHandlers(): void {
       const data = JSON.parse(raw) as Partial<ExportedData>
       const summary = await importAllData(data)
       return { canceled: false, summary }
-    } catch {
-      return { canceled: false, error: '파일을 읽지 못했거나 형식이 올바르지 않습니다.' }
+    } catch (e) {
+      const message = e instanceof Error && e.message.startsWith('unsupported_export_version:')
+        ? e.message.slice('unsupported_export_version:'.length).trim()
+        : '파일을 읽지 못했거나 형식이 올바르지 않습니다.'
+      return { canceled: false, error: message }
     }
   })
 }

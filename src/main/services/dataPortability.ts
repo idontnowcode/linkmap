@@ -70,6 +70,15 @@ async function insertCollectionsTopological(cols: Collection[]): Promise<void> {
  * 같은 id가 이미 있으면 onConflictDoNothing으로 건너뛴다(같은 파일을 다시 가져와도 안전).
  */
 export async function importAllData(data: Partial<ExportedData>): Promise<ImportSummary> {
+  // EXPORT_VERSION만 정의해두고 실제로는 검사하지 않아 향후 스키마가 바뀌면 무음으로
+  // 잘못된 데이터가 들어갈 수 있었다(eval-rubric 지적, 2026-09-18) — 지금 앱이 모르는
+  // 더 미래 버전의 백업 파일만 명시적으로 거부한다(과거 버전은 계속 하위호환).
+  if (typeof data.version === 'number' && data.version > EXPORT_VERSION) {
+    throw new Error(
+      `unsupported_export_version: 이 백업 파일(v${data.version})은 현재 앱(v${EXPORT_VERSION})보다 최신 버전에서 내보낸 것이라 가져올 수 없습니다. 앱을 업데이트한 뒤 다시 시도하세요.`
+    )
+  }
+
   const db = getDb()
   const summary: ImportSummary = {
     tags: 0,

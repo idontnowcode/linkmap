@@ -56,7 +56,9 @@ export function SettingsDialog(): JSX.Element {
       const sm = res.summary
       setImportMsg(
         sm
-          ? `가져왔습니다 — 링크 ${sm.links}, 태그 ${sm.tags}, 관계 ${sm.relations}, 폴더 ${sm.collections}건 확인(이미 있던 항목은 건너뜀)`
+          ? `가져왔습니다 — 링크 ${sm.links}, 태그 ${sm.tags}, 관계 ${sm.relations}, 폴더(컬렉션) ${sm.collections}, ` +
+            `태그연결 ${sm.linkTags}, 폴더연결 ${sm.collectionLinks}, 동기화 제외 ${sm.folderExclusions}건 확인` +
+            `(이미 있던 항목은 건너뜀)`
           : '가져왔습니다.'
       )
     } finally {

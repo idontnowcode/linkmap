@@ -12,6 +12,7 @@ import type {
   FolderSyncResult
 } from '@shared/ipc'
 import { TAG_PALETTE, type Tag } from '@shared/types'
+import { isPathExcluded } from '@shared/pathExclusion'
 import { folderExclusionRepo, linkRepo, linkTagRepo, tagRepo } from '../repositories'
 import { readTextFileContent } from './fileContent'
 
@@ -148,21 +149,6 @@ function dirSegmentsOf(relativeFilePath: string): string[] {
   const segments = relativeFilePath.split(/[\\/]/).filter(Boolean)
   segments.pop() // 파일명 제거 — 남는 건 조상 폴더 세그먼트들
   return segments
-}
-
-function normalizeRel(p: string): string {
-  return p.replace(/\\/g, '/')
-}
-
-/** relativePath 자신이나 그 조상 경로가 제외 목록에 있으면 true (gitignore 스타일). */
-function isPathExcluded(relativePath: string, excluded: ReadonlySet<string>): boolean {
-  if (excluded.size === 0) return false
-  const norm = normalizeRel(relativePath)
-  for (const ex of excluded) {
-    const exNorm = normalizeRel(ex)
-    if (norm === exNorm || norm.startsWith(`${exNorm}/`)) return true
-  }
-  return false
 }
 
 /** 선택된 상대경로들을 일괄로 링크 생성 + 조상 폴더 전체의 계층 태그 부착. 이미 활성 링크가 있으면 재사용. */

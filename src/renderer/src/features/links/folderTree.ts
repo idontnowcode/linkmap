@@ -2,6 +2,7 @@
 // 트리 빌드/선택 계산 순수 유틸. entries는 백엔드 walk()가 DFS 전위 순회로 넣어준다(폴더
 // 자신 -> 그 하위 전부 -> 다음 형제) — 그 보장 덕분에 depth만으로 스택 기반 재구성이 가능하다.
 import type { FolderEntry } from '@shared/ipc'
+export { isPathExcluded } from '@shared/pathExclusion'
 
 export interface TreeNode {
   entry: FolderEntry
@@ -28,21 +29,6 @@ export function collectFilePaths(node: TreeNode, out: string[]): void {
     return
   }
   for (const c of node.children) collectFilePaths(c, out)
-}
-
-function normalizeRel(p: string): string {
-  return p.replace(/\\/g, '/')
-}
-
-/** relativePath 자신이나 그 조상 경로가 excluded 목록에 있으면 true (gitignore 스타일, main의 isPathExcluded와 동일 로직). */
-export function isPathExcluded(relativePath: string, excluded: ReadonlySet<string>): boolean {
-  if (excluded.size === 0) return false
-  const norm = normalizeRel(relativePath)
-  for (const ex of excluded) {
-    const exNorm = normalizeRel(ex)
-    if (norm === exNorm || norm.startsWith(`${exNorm}/`)) return true
-  }
-  return false
 }
 
 /** 트리 전체 파일 중 included(체크됨)가 아닌 것들의 최소 경로 집합을 계산 — 폴더 전체가
