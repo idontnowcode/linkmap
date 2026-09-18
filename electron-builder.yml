@@ -5,7 +5,14 @@ directories:
   buildResources: build
 files:
   - out/**/*
+  - node_modules/**/*
   - package.json
+# main 프로세스 빌드(electron-vite)는 dependencies를 번들에 안 넣고 그대로 import하기 때문에
+# node_modules를 패키지에 반드시 포함해야 한다 — 안 그러면 unpdf 등에서
+# ERR_MODULE_NOT_FOUND로 실행 자체가 안 된다(2026-09-18, 다른 PC 실행 시 발견).
+# @libsql의 네이티브 바이너리(.node)는 asar 안에서 dlopen이 안 되므로 압축 해제 대상에서 뺀다.
+asarUnpack:
+  - '**/*.node'
 extraResources:
   - from: resources/icon.png
     to: icon.png
